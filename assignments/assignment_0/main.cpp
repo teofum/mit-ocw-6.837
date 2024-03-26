@@ -24,15 +24,24 @@ vector<vector<unsigned>> faces;
 
 // Color change
 constexpr unsigned int colorCount = 4;
-unsigned int colorIdx = 0;
+constexpr float colorChangeSpeed = 1.0f / 10;
+unsigned int colorIdx = 0, nextColorIdx = 0;
+float colorLerp = 0.0f;
+
+GLfloat colors[4][4] = {
+    {0.5, 0.5, 0.9, 1.0},
+    {0.9, 0.5, 0.5, 1.0},
+    {0.5, 0.9, 0.3, 1.0},
+    {0.3, 0.8, 0.9, 1.0}
+};
 
 // Light position
 GLfloat Lt0pos[] = {1.0f, 1.0f, 5.0f, 1.0f};
 
 // Rotation flag and amount
+constexpr float rotationSpeed = PI * 2 / 10;
 bool rotating = false;
 float rotation = 0.0f;
-constexpr float rotation_speed = PI * 2 / 10;
 
 // These are convenience functions which allow us to call OpenGL
 // methods on Vec3d objects
@@ -47,7 +56,8 @@ void keyboardFunc(unsigned char key, int x, int y) {
     exit(0);
     break;
   case 'c':
-    colorIdx = (colorIdx + 1) % colorCount;
+    nextColorIdx = (colorIdx + 1) % colorCount;
+    colorLerp += colorChangeSpeed;
     break;
   case 'r':
     rotating = !rotating;
@@ -86,8 +96,6 @@ void redraw(int _) { glutPostRedisplay(); }
 
 // This function is responsible for displaying the object.
 void drawScene(void) {
-  int i;
-
   // Clear the rendering window
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -101,16 +109,14 @@ void drawScene(void) {
 
   // Set material properties of object
 
-  // Here are some colors you might use - feel free to add more
-  GLfloat diffColors[4][4] = {
-      {0.5, 0.5, 0.9, 1.0},
-      {0.9, 0.5, 0.5, 1.0},
-      {0.5, 0.9, 0.3, 1.0},
-      {0.3, 0.8, 0.9, 1.0}
-  };
+  GLfloat matColor[4];
+  for (int i = 0; i < 4; i++) {
+    matColor[i] = (1.0f - colorLerp) * colors[colorIdx][i] +
+                  colorLerp * colors[nextColorIdx][i];
+  }
 
   // Here we use the first color entry as the diffuse color
-  glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, diffColors[colorIdx]);
+  glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, matColor);
 
   // Define specular color and shininess
   GLfloat specColor[] = {1.0, 1.0, 1.0, 1.0};
@@ -136,7 +142,16 @@ void drawScene(void) {
   glutSwapBuffers();
 
   if (rotating) {
-    rotation += rotation_speed;
+    rotation += rotationSpeed;
+  }
+  if (colorLerp != 0.0f) {
+    colorLerp += colorChangeSpeed;
+    if (colorLerp >= 1.0f) {
+      colorLerp = 0.0f;
+      colorIdx = nextColorIdx;
+    }
+  }
+  if (rotating || colorLerp != 0.0f) {
     glutTimerFunc(16, redraw, 0);
   }
 }
