@@ -1,0 +1,1 @@
+Vecmath library from [MIT's course in Computer Graphics](http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-837-computer-graphics-fall-201/2) adapted for GNU/Linux compilation and installation
