@@ -7,6 +7,8 @@
 
 #include "obj.h"
 
+#define PI 3.141529
+
 using namespace std;
 
 // Globals
@@ -27,7 +29,10 @@ unsigned int colorIdx = 0;
 // Light position
 GLfloat Lt0pos[] = {1.0f, 1.0f, 5.0f, 1.0f};
 
-// You will need more global variables to implement color and position changes
+// Rotation flag and amount
+bool rotating = false;
+float rotation = 0.0f;
+constexpr float rotation_speed = PI * 2 / 10;
 
 // These are convenience functions which allow us to call OpenGL
 // methods on Vec3d objects
@@ -43,6 +48,9 @@ void keyboardFunc(unsigned char key, int x, int y) {
     break;
   case 'c':
     colorIdx = (colorIdx + 1) % colorCount;
+    break;
+  case 'r':
+    rotating = !rotating;
     break;
   default:
     cout << "Unhandled key press " << key << "." << endl;
@@ -73,6 +81,8 @@ void specialFunc(int key, int x, int y) {
   // this will refresh the screen so that the user sees the light position
   glutPostRedisplay();
 }
+
+void redraw(int _) { glutPostRedisplay(); }
 
 // This function is responsible for displaying the object.
 void drawScene(void) {
@@ -119,6 +129,7 @@ void drawScene(void) {
   glLightfv(GL_LIGHT0, GL_POSITION, Lt0pos);
 
   // Draw object vertices
+  glRotatef(rotation, 0.0f, 1.0f, 0.0f);
   glBegin(GL_TRIANGLES);
   for (int i = 0; i < faces.size(); i++) {
     auto face = faces[i];
@@ -133,6 +144,11 @@ void drawScene(void) {
 
   // Dump the image to the screen.
   glutSwapBuffers();
+
+  if (rotating) {
+    rotation += rotation_speed;
+    glutTimerFunc(16, redraw, 0);
+  }
 }
 
 // Initialize OpenGL's rendering modes
