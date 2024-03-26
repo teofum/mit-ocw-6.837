@@ -130,17 +130,7 @@ void drawScene(void) {
 
   // Draw object vertices
   glRotatef(rotation, 0.0f, 1.0f, 0.0f);
-  glBegin(GL_TRIANGLES);
-  for (int i = 0; i < faces.size(); i++) {
-    auto face = faces[i];
-    for (int j = 0; j < face.size(); j += 3) {
-      Vector3f vertex = vertices[face[j]];
-      Vector3f normal = normals[face[2 + j]];
-      glNormal3f(normal[0], normal[1], normal[2]);
-      glVertex3f(vertex[0], vertex[1], vertex[2]);
-    }
-  }
-  glEnd();
+  glCallList(1);
 
   // Dump the image to the screen.
   glutSwapBuffers();
@@ -175,12 +165,27 @@ void reshapeFunc(int w, int h) {
   gluPerspective(50.0, 1.0, 1.0, 100.0);
 }
 
-void loadInput() { readObj(vertices, normals, faces); }
+void loadInput() {
+  readObj(vertices, normals, faces);
+
+  glNewList(1, GL_COMPILE);
+  glBegin(GL_TRIANGLES);
+  for (int i = 0; i < faces.size(); i++) {
+    auto face = faces[i];
+    for (int j = 0; j < face.size(); j += 3) {
+      Vector3f vertex = vertices[face[j]];
+      Vector3f normal = normals[face[2 + j]];
+      glNormal3f(normal[0], normal[1], normal[2]);
+      glVertex3f(vertex[0], vertex[1], vertex[2]);
+    }
+  }
+  glEnd();
+  glEndList();
+}
 
 // Main routine.
 // Set up OpenGL, define the callbacks and start the main loop
 int main(int argc, char **argv) {
-  loadInput();
 
   glutInit(&argc, argv);
 
@@ -195,6 +200,7 @@ int main(int argc, char **argv) {
   // Initialize OpenGL parameters.
   initRendering();
 
+  loadInput();
   // Set up callback functions for key presses
   glutKeyboardFunc(keyboardFunc); // Handles "normal" ascii symbols
   glutSpecialFunc(specialFunc);   // Handles "special" keyboard keys
