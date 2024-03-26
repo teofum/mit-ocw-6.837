@@ -43,6 +43,12 @@ constexpr float rotationSpeed = PI * 2 / 10;
 bool rotating = false;
 float rotation = 0.0f;
 
+// Mouse position
+int lastMousePos[2] = {-1, -1};
+Matrix4f rotationMatrix = Matrix4f::identity();
+constexpr float zoomSpeed = 0.25f;
+float cameraDistance = 5.0f;
+
 // These are convenience functions which allow us to call OpenGL
 // methods on Vec3d objects
 inline void glVertex(const Vector3f &a) { glVertex3fv(a.getElements()); }
@@ -61,6 +67,12 @@ void keyboardFunc(unsigned char key, int x, int y) {
     break;
   case 'r':
     rotating = !rotating;
+    break;
+  case '+':
+    cameraDistance = fmaxf(cameraDistance - zoomSpeed, 1.0);
+    break;
+  case '-':
+    cameraDistance += zoomSpeed;
     break;
   default:
     cout << "Unhandled key press " << key << "." << endl;
@@ -92,6 +104,49 @@ void specialFunc(int key, int x, int y) {
   glutPostRedisplay();
 }
 
+// This function is called whenever the mouse is moved with a button pressed
+void motionFunc(int x, int y) {
+  if (lastMousePos[0] != -1 && lastMousePos[1] != -1) {
+    float dx = x - lastMousePos[0];
+    float dy = y - lastMousePos[1];
+    if (dx != 0.0 || dy != 0.0) {
+      float len = sqrtf(dx * dx + dy * dy);
+      float angle = len * 0.01;
+
+      Vector2f axis(dy, dx);
+      axis.normalize();
+      float x = axis.x(), y = axis.y();
+      float c = cosf(angle), s = sinf(angle);
+      Matrix4f localRotation(
+          x * x * (1 - c) + c, x * y * (1 - c), y * s, 0.0,  //
+          y * x * (1 - c), y * y * (1 - c) + c, -x * s, 0.0, //
+          -y * s, x * s, c, 0.0,                             //
+          0.0, 0.0, 0.0, 1.0
+      );
+      rotationMatrix = localRotation * rotationMatrix;
+    }
+
+    // this will refresh the screen
+    glutPostRedisplay();
+  }
+
+  lastMousePos[0] = x;
+  lastMousePos[1] = y;
+}
+
+void mouseFunc(int button, int state, int x, int y) {
+  if ((button == 3 || button == 4) && state == GLUT_DOWN) {
+    int direction = button == 3 ? -1 : 1;
+    cameraDistance += direction * zoomSpeed / 10;
+
+    // this will refresh the screen
+    glutPostRedisplay();
+  } else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+    lastMousePos[0] = -1;
+    lastMousePos[1] = -1;
+  }
+}
+
 void redraw(int _) { glutPostRedisplay(); }
 
 // This function is responsible for displaying the object.
@@ -105,7 +160,7 @@ void drawScene(void) {
 
   // Position the camera at [0,0,5], looking at [0,0,0],
   // with [0,1,0] as the up direction.
-  gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  gluLookAt(0.0, 0.0, cameraDistance, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
   // Set material properties of object
 
@@ -135,6 +190,7 @@ void drawScene(void) {
   glLightfv(GL_LIGHT0, GL_POSITION, Lt0pos);
 
   // Draw object vertices
+  glMultMatrixf(rotationMatrix.getElements());
   glRotatef(rotation, 0.0f, 1.0f, 0.0f);
   glCallList(1);
 
@@ -219,6 +275,8 @@ int main(int argc, char **argv) {
   // Set up callback functions for key presses
   glutKeyboardFunc(keyboardFunc); // Handles "normal" ascii symbols
   glutSpecialFunc(specialFunc);   // Handles "special" keyboard keys
+  glutMotionFunc(motionFunc);     // Handles mouse movement
+  glutMouseFunc(mouseFunc);       // Handles mouse up
 
   // Set up the callback function for resizing windows
   glutReshapeFunc(reshapeFunc);
