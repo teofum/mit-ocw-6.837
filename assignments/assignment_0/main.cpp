@@ -13,14 +13,17 @@ using namespace std;
 
 // Globals
 
-// This is the list of points (3D vectors)
+// List of points (3D vectors)
 vector<Vector3f> vertices;
 
-// This is the list of normals (also 3D vectors)
+// List of normals (also 3D vectors)
 vector<Vector3f> normals;
 
-// This is the list of faces (indices into vertices and normals)
+// List of faces (indices into vertices and normals)
 vector<vector<unsigned>> faces;
+
+// Vertex adjacency matrix, used for mesh simplification
+vector<unsigned> edges;
 
 // Color change
 constexpr unsigned int colorCount = 4;
@@ -237,7 +240,7 @@ void reshapeFunc(int w, int h) {
 }
 
 void loadInput() {
-  readObj(vertices, normals, faces);
+  readObj(vertices, normals, faces, edges);
 
   glNewList(1, GL_COMPILE);
   glBegin(GL_TRIANGLES);

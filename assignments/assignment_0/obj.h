@@ -13,7 +13,8 @@ using namespace std;
 void readObj(
     vector<Vector3f> &vertices,
     vector<Vector3f> &normals,
-    vector<vector<unsigned>> &faces
+    vector<vector<unsigned>> &faces,
+    vector<unsigned> &edges
 );
 
 #endif

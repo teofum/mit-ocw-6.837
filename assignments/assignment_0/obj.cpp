@@ -4,11 +4,13 @@
 #include "obj.h"
 
 #define BUF_SIZE 256
+#define VERT_SIZE 3 // Number of items in a vertex definition (pos, uv, normal)
 
 void readObj(
     vector<Vector3f> &vertices,
     vector<Vector3f> &normals,
-    vector<vector<unsigned>> &faces
+    vector<vector<unsigned>> &faces,
+    vector<unsigned> &edges // Vertex adjacency matrix, for mesh simplification
 ) {
   char buffer[BUF_SIZE];
   string type;
@@ -40,6 +42,22 @@ void readObj(
         }
       }
       faces.push_back(vertexData);
+    }
+  }
+
+  int vertexCount = vertices.size();
+  edges.reserve(vertexCount * vertexCount);
+  edges.resize(edges.capacity(), 0); // Fill with 0
+
+  for (int i = 0; i < faces.size(); i++) {
+    auto face = faces[i];
+    int faceEdges = face.size();
+    for (int j = 0; j < faceEdges; j += VERT_SIZE) {
+      int next = (j + VERT_SIZE) % faceEdges;
+
+      // Each pair of consecutive vertices in a face is connected by an edge
+      int v1 = face[j], v2 = face[next];
+      edges[v1 * vertexCount + v2]++;
     }
   }
 }
