@@ -6,7 +6,7 @@ LINKFLAGS += -L ../../lib -lvecmath
 
 CFLAGS    = -O2
 CC        = $(CXX)
-SRCS      = main.cpp obj.cpp
+SRCS      = main.cpp obj.cpp simplify.cpp
 OBJS      = $(SRCS:.cpp=.o)
 PROG      = a0
 

@@ -46,7 +46,7 @@ public:
   Matrix4f(const Matrix4f &rm);            // copy constructor
   Matrix4f &operator=(const Matrix4f &rm); // assignment operator
   Matrix4f &operator/=(float d);
-  Matrix4f &operator+=(Matrix4f &rhs);
+  Matrix4f &operator+=(const Matrix4f &rhs);
   // no destructor necessary
 
   const float &operator()(int i, int j) const;
@@ -156,5 +156,8 @@ Vector4f operator*(const Matrix4f &m, const Vector4f &v);
 
 // Matrix-Matrix multiplication
 Matrix4f operator*(const Matrix4f &x, const Matrix4f &y);
+
+// Matrix addition
+Matrix4f operator+(const Matrix4f &x, const Matrix4f &y);
 
 #endif // MATRIX4F_H

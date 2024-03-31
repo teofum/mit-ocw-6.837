@@ -9,6 +9,13 @@
 
 using namespace std;
 
+struct VertexPair {
+  unsigned v1;
+  unsigned v2;
+  Vector3f target;
+  float cost;
+};
+
 /**
  * Simplify a mesh
  */

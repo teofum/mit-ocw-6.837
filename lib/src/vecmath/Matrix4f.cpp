@@ -63,7 +63,7 @@ Matrix4f &Matrix4f::operator/=(float d) {
   return *this;
 }
 
-Matrix4f &Matrix4f::operator+=(Matrix4f &rhs) {
+Matrix4f &Matrix4f::operator+=(const Matrix4f &rhs) {
   for (int ii = 0; ii < 16; ii++) {
     m_elements[ii] += rhs.m_elements[ii];
   }
@@ -654,4 +654,10 @@ Matrix4f operator*(const Matrix4f &x, const Matrix4f &y) {
   }
 
   return product;
+}
+
+Matrix4f operator+(const Matrix4f &x, const Matrix4f &y) {
+  Matrix4f r(x);
+  r += y;
+  return r;
 }

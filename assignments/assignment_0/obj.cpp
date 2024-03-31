@@ -58,6 +58,7 @@ void readObj(
       // Each pair of consecutive vertices in a face is connected by an edge
       int v1 = face[j], v2 = face[next];
       edges[v1 * vertexCount + v2]++;
+      edges[v2 * vertexCount + v1]++;
     }
   }
 }
