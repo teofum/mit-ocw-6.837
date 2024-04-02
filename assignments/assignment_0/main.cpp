@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "obj.h"
+#include "simplify.h"
 
 #define PI 3.141529
 
@@ -241,6 +242,7 @@ void reshapeFunc(int w, int h) {
 
 void loadInput() {
   readObj(vertices, normals, faces, edges);
+  simplify(vertices, normals, faces, edges);
 
   glNewList(1, GL_COMPILE);
   glBegin(GL_TRIANGLES);

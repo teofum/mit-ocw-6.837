@@ -1,6 +1,7 @@
 #ifndef __SIMPLIFY_H__
 #define __SIMPLIFY_H__
 
+#include <algorithm>
 #include <vecmath.h>
 #include <vector>
 
@@ -23,7 +24,7 @@ void simplify(
     vector<Vector3f> &vertices,
     vector<Vector3f> &normals,
     vector<vector<unsigned>> &faces,
-    vector<unsigned> &edges
+    const vector<unsigned> &edges
 );
 
 #endif
