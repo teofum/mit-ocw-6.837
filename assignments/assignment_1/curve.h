@@ -9,17 +9,15 @@
 // after it has been tesselated: the vertex (V), the tangent (T), the
 // normal (N), and the binormal (B).  It is the responsiblility of
 // functions that create these objects to fill in all the data.
-struct CurvePoint
-{
-    Vector3f V; // Vertex
-    Vector3f T; // Tangent  (unit)
-    Vector3f N; // Normal   (unit)
-    Vector3f B; // Binormal (unit)
+struct CurvePoint {
+  Vector3f V; // Vertex
+  Vector3f T; // Tangent  (unit)
+  Vector3f N; // Normal   (unit)
+  Vector3f B; // Binormal (unit)
 };
 
 // This is just a handy shortcut.
-typedef std::vector< CurvePoint > Curve;
-
+typedef std::vector<CurvePoint> Curve;
 
 ////////////////////////////////////////////////////////////////////////////
 // The following two functions take an array of control points (stored
@@ -33,17 +31,16 @@ typedef std::vector< CurvePoint > Curve;
 
 // Assume number of control points properly specifies a piecewise
 // Bezier curve.  I.e., C.size() == 4 + 3*n, n=0,1,...
-Curve evalBezier( const std::vector< Vector3f >& P, unsigned steps );
+Curve evalBezier(const std::vector<Vector3f> &P, unsigned steps);
 
 // Bsplines only require that there are at least 4 control points.
-Curve evalBspline( const std::vector< Vector3f >& P, unsigned steps );
+Curve evalBspline(const std::vector<Vector3f> &P, unsigned steps);
 
 // Create a circle on the xy-plane of radius and steps
-Curve evalCircle( float radius, unsigned steps);
-
+Curve evalCircle(float radius, unsigned steps);
 
 // Draw the curve and (optionally) the associated coordinate frames
 // If framesize == 0, then no frames are drawn.  Otherwise, drawn.
-void drawCurve( const Curve& curve, float framesize = 0 );
+void drawCurve(const Curve &curve, float framesize = 0);
 
 #endif

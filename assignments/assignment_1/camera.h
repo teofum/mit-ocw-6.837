@@ -8,67 +8,64 @@
 
 #include <vecmath.h>
 
-class Camera
-{
+class Camera {
 public:
+  Camera();
 
-    Camera();
-    
-    typedef enum { NONE, LEFT, MIDDLE, RIGHT } Button;
+  typedef enum { NONE, LEFT, MIDDLE, RIGHT } Button;
 
-    // You must call all of the Set*() functions before you use this!
-    // I didn't put it into the constructor because it's inconvenient
-    // to initialize stuff in my opengl application.
-    
-    void SetDimensions(int w, int h);
-    void SetViewport(int x, int y, int w, int h);
-    void SetPerspective(float fovy);
+  // You must call all of the Set*() functions before you use this!
+  // I didn't put it into the constructor because it's inconvenient
+  // to initialize stuff in my opengl application.
 
-    // Call from whatever UI toolkit
-    void MouseClick(Button button, int x, int y);
-    void MouseDrag(int x, int y);
-    void MouseRelease(int x, int y);
+  void SetDimensions(int w, int h);
+  void SetViewport(int x, int y, int w, int h);
+  void SetPerspective(float fovy);
 
-    // Apply viewport, perspective, and modeling
-    // use these instead of 
-    void ApplyViewport() const;
-    void ApplyPerspective() const;
-    void ApplyModelview() const;
+  // Call from whatever UI toolkit
+  void MouseClick(Button button, int x, int y);
+  void MouseDrag(int x, int y);
+  void MouseRelease(int x, int y);
 
-    // Set for relevant vars
-    void SetCenter(const Vector3f& center);
-    void SetRotation(const Matrix4f& rotation);
-    void SetDistance(const float distance);
+  // Apply viewport, perspective, and modeling
+  // use these instead of
+  void ApplyViewport() const;
+  void ApplyPerspective() const;
+  void ApplyModelview() const;
 
-    // Get for relevant vars
-    Vector3f GetCenter() const { return mCurrentCenter; }
-    Matrix4f GetRotation() const { return mCurrentRot; }
-    float GetDistance() const { return mCurrentDistance; }
-    
+  // Set for relevant vars
+  void SetCenter(const Vector3f &center);
+  void SetRotation(const Matrix4f &rotation);
+  void SetDistance(const float distance);
+
+  // Get for relevant vars
+  Vector3f GetCenter() const { return mCurrentCenter; }
+  Matrix4f GetRotation() const { return mCurrentRot; }
+  float GetDistance() const { return mCurrentDistance; }
+
 private:
+  // States
+  int mDimensions[2];
+  int mStartClick[2];
+  Button mButtonState;
 
-    // States 
-    int     mDimensions[2];
-    int     mStartClick[2];
-    Button  mButtonState;
+  // For rotation
+  Matrix4f mStartRot;
+  Matrix4f mCurrentRot;
 
-    // For rotation
-    Matrix4f mStartRot;
-    Matrix4f mCurrentRot;
+  // For translation
+  float mPerspective[2];
+  int mViewport[4];
+  Vector3f mStartCenter;
+  Vector3f mCurrentCenter;
 
-    // For translation
-    float   mPerspective[2];
-    int     mViewport[4];
-    Vector3f mStartCenter;
-    Vector3f mCurrentCenter;
+  // For zoom
+  float mStartDistance;
+  float mCurrentDistance;
 
-    // For zoom
-    float   mStartDistance;
-    float   mCurrentDistance;
-
-    void ArcBallRotation(int x, int y);
-    void PlaneTranslation(int x, int y);
-    void DistanceZoom(int x, int y);
+  void ArcBallRotation(int x, int y);
+  void PlaneTranslation(int x, int y);
+  void DistanceZoom(int x, int y);
 };
 
 #endif

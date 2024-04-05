@@ -18,7 +18,7 @@
    ...
 
    ---CURVES---
-   
+
    TYPE can be Bez2, Bez3, Bsp2, Bsp3 which specify Bezier/Bspline
    curves in 2/3 dimensions.
 
@@ -62,11 +62,13 @@
 // The vectors are passed in by reference.  parseFile actually writes
 // to these variables.  This is how we pull off a multiple
 // return-value function.
-bool parseFile(std::istream &in,
-               std::vector<std::vector<Vector3f> > &ctrlPoints, 
-               std::vector<Curve>                  &curves,     
-               std::vector<std::string>            &curveNames, 
-               std::vector<Surface>                &surfaces,   
-               std::vector<std::string>            &surfaceNames );
+bool parseFile(
+    std::istream &in,
+    std::vector<std::vector<Vector3f>> &ctrlPoints,
+    std::vector<Curve> &curves,
+    std::vector<std::string> &curveNames,
+    std::vector<Surface> &surfaces,
+    std::vector<std::string> &surfaceNames
+);
 
 #endif

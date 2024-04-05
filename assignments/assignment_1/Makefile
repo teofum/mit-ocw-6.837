@@ -1,22 +1,22 @@
 UNAME := $(shell uname)
 
 ifeq ($(UNAME),Darwin)
-INCFLAGS = -I vecmath/include/
+INCFLAGS = -I ../../lib/vecmath
 
 FRAMEWORKS = -framework Glut
 FRAMEWORKS += -framework OpenGL
 
-LINKFLAGS += -L vecmath/lib/ -lvecmath
+LINKFLAGS += -L ../../lib -lvecmath
 else
 INCFLAGS = -I /usr/include/GL
-INCFLAGS += -I /mit/6.837/public/include/vecmath
+INCFLAGS += -I ../../lib/vecmath
 
 LINKFLAGS = -lglut -lGL -lGLU
-LINKFLAGS += -L /mit/6.837/public/lib -lvecmath
+LINKFLAGS += -L ../../lib -lvecmath
 endif
 
-CFLAGS    = -O2 -Wall -ansi -DSOLN
-CC        = g++
+CFLAGS    = -O2 -Wall -Wno-deprecated-declarations -DSOLN
+CC        = $(CXX)
 SRCS      = main.cpp parse.cpp curve.cpp surf.cpp camera.cpp
 OBJS      = $(SRCS:.cpp=.o)
 PROG      = a1
