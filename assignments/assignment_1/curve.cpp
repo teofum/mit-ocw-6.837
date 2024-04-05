@@ -15,6 +15,7 @@
 #ifdef WIN32
 #include <windows.h>
 #endif
+
 using namespace std;
 
 namespace {
@@ -24,6 +25,11 @@ inline bool approx(const Vector3f &lhs, const Vector3f &rhs) {
   const float eps = 1e-8f;
   return (lhs - rhs).absSquared() < eps;
 }
+
+// Spline matrix for bezier curves (Bernstein polynomials)
+Matrix4f bernstein(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
+// Derivatives of Bernstein polynomials
+Matrix4f bernstein_d(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
 
 } // namespace
 
@@ -48,28 +54,26 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
     Vector3f lastB(0, 0, 1); // Arbitrary starting bitangent
     for (int j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
       float t = (float)j / steps;
-      float tt = 1.0 - t;
+      float t2 = t * t;
+      float t3 = t2 * t;
+      Vector4f basis(1, t, t2, t3);
 
       // Coefficients for V = q(t) (Bernstein polynomials)
-      float b0 = tt * tt * tt;
-      float b1 = 3 * t * tt * tt;
-      float b2 = 3 * t * t * tt;
-      float b3 = t * t * t;
+      Vector4f b = bernstein * basis;
 
       // Coefficients for T = q'(t) (derivatives of Bernstein polynomials)
-      float d0 = -3 * tt * tt * tt;
-      float d1 = 3 * tt * tt - 6 * t * tt;
-      float d2 = 6 * t * tt - 3 * t * t;
-      float d3 = 3 * t * t;
+      Vector4f d = bernstein_d * basis;
 
       // Calculate point and tangent vector
+      // We do this part explicitly because I don't want to write a 2x4 matrix
+      // class just for this. Lazy!
       CurvePoint point;
-      point.V = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3;
-      point.T = (b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3).normalized();
+      point.V = b[0] * p0 + b[1] * p1 + b[2] * p2 + b[3] * p3;
+      point.T = (d[0] * p0 + d[1] * p1 + d[2] * p2 + d[3] * p3).normalized();
 
       // Calculate normal and bitangent vector
       // If "seed" vector is parallel to normal change it to perpendicular
-      if (j == 0 && Vector3f::dot(lastB, point.T) - 1.0 < __FLT_EPSILON__)
+      if (j == 0 && approx(Vector3f::dot(lastB, point.T), 1.0))
         lastB = Vector3f(0, 1, 0);
 
       point.N = Vector3f::cross(lastB, point.T).normalized();
