@@ -34,35 +34,55 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
     exit(0);
   }
 
-  // TODO:
-  // You should implement this function so that it returns a Curve
-  // (e.g., a vector< CurvePoint >).  The variable "steps" tells you
-  // the number of points to generate on each piece of the spline.
-  // At least, that's how the sample solution is implemented and how
-  // the SWP files are written.  But you are free to interpret this
-  // variable however you want, so long as you can control the
-  // "resolution" of the discretized spline curve with it.
+  unsigned segments = (P.size() - 1) / 3;       // # of curve segments
+  unsigned points = (steps - 1) * segments + 2; // # of points in approximation
+  Curve curve;
+  curve.reserve(points); // pre-allocate
 
-  // Make sure that this function computes all the appropriate
-  // Vector3fs for each CurvePoint: V,T,N,B.
-  // [NBT] should be unit and orthogonal.
+  cerr << segments << " segments, " << points << " points" << endl;
 
-  // Also note that you may assume that all Bezier curves that you
-  // receive have G1 continuity.  Otherwise, the TNB will not be
-  // be defined at points where this does not hold.
+  for (int s = 0; s < segments; s++) {
+    int i = s * 3;
+    Vector3f p0 = P[i], p1 = P[i + 1], p2 = P[i + 2], p3 = P[i + 3];
 
-  cerr << "\t>>> evalBezier has been called with the following input:" << endl;
+    Vector3f lastB(0, 0, 1); // Arbitrary starting bitangent
+    for (int j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
+      float t = (float)j / steps;
+      float tt = 1.0 - t;
 
-  cerr << "\t>>> Control points (type vector< Vector3f >): " << endl;
-  for (unsigned i = 0; i < P.size(); ++i) {
-    // cerr << "\t>>> " << P[i] << endl;
+      // Coefficients for V = q(t) (Bernstein polynomials)
+      float b0 = tt * tt * tt;
+      float b1 = 3 * t * tt * tt;
+      float b2 = 3 * t * t * tt;
+      float b3 = t * t * t;
+
+      // Coefficients for T = q'(t) (derivatives of Bernstein polynomials)
+      float d0 = -3 * tt * tt * tt;
+      float d1 = 3 * tt * tt - 6 * t * tt;
+      float d2 = 6 * t * tt - 3 * t * t;
+      float d3 = 3 * t * t;
+
+      // Calculate point and tangent vector
+      CurvePoint point;
+      point.V = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3;
+      point.T = (b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3).normalized();
+
+      // Calculate normal and bitangent vector
+      // If "seed" vector is parallel to normal change it to perpendicular
+      if (j == 0 && Vector3f::dot(lastB, point.T) - 1.0 < __FLT_EPSILON__)
+        lastB = Vector3f(0, 1, 0);
+
+      point.N = Vector3f::cross(lastB, point.T).normalized();
+      lastB = point.B = Vector3f::cross(point.T, point.N).normalized();
+
+      // Add point to the curve
+      curve.push_back(point);
+    }
   }
 
-  cerr << "\t>>> Steps (type steps): " << steps << endl;
-  cerr << "\t>>> Returning empty curve." << endl;
+  cerr << curve.size() << " actual points" << endl;
 
-  // Right now this will just return this empty curve.
-  return Curve();
+  return curve;
 }
 
 Curve evalBspline(const vector<Vector3f> &P, unsigned steps) {
