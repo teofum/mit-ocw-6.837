@@ -110,7 +110,6 @@ Curve evalBspline(const vector<Vector3f> &P, unsigned steps) {
   // After that, for each point P[i], i >= 4 we need to push an entire segment
   // of the last four points P[i-3]..P[i]
   for (unsigned i = 4; i < P.size(); i++) {
-    P_bezier.push_back((1.0 / 6.0) * (P[i - 3] + 4 * P[i - 2] + P[i - 1]));
     P_bezier.push_back((1.0 / 6.0) * (4 * P[i - 2] + 2 * P[i - 1]));
     P_bezier.push_back((1.0 / 6.0) * (2 * P[i - 2] + 4 * P[i - 1]));
     P_bezier.push_back((1.0 / 6.0) * (P[i - 2] + 4 * P[i - 1] + P[i]));
