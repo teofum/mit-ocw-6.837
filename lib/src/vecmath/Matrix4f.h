@@ -157,6 +157,9 @@ Vector4f operator*(const Matrix4f &m, const Vector4f &v);
 // Matrix-Matrix multiplication
 Matrix4f operator*(const Matrix4f &x, const Matrix4f &y);
 
+// Matrix-scalar multiplication
+Matrix4f operator*(float x, const Matrix4f &y);
+
 // Matrix addition
 Matrix4f operator+(const Matrix4f &x, const Matrix4f &y);
 

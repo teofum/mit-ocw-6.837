@@ -656,6 +656,16 @@ Matrix4f operator*(const Matrix4f &x, const Matrix4f &y) {
   return product;
 }
 
+Matrix4f operator*(float x, const Matrix4f &y) {
+  Matrix4f output(y);
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      output(i, j) *= x;
+    }
+  }
+  return output;
+}
+
 Matrix4f operator+(const Matrix4f &x, const Matrix4f &y) {
   Matrix4f r(x);
   r += y;

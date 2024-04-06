@@ -27,9 +27,9 @@ inline bool approx(const Vector3f &lhs, const Vector3f &rhs) {
 }
 
 // Spline matrix for bezier curves (Bernstein polynomials)
-Matrix4f bernstein(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
+Matrix4f bezier(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
 // Derivatives of Bernstein polynomials
-Matrix4f bernstein_d(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
+Matrix4f bezier_d(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
 
 } // namespace
 
@@ -47,25 +47,25 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
 
   cerr << segments << " segments, " << points << " points" << endl;
 
-  for (int s = 0; s < segments; s++) {
+  for (unsigned s = 0; s < segments; s++) {
     int i = s * 3;
     Vector3f p0 = P[i], p1 = P[i + 1], p2 = P[i + 2], p3 = P[i + 3];
 
     Vector3f lastB(0, 0, 1); // Arbitrary starting bitangent
-    for (int j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
+    for (unsigned j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
       float t = (float)j / steps;
       float t2 = t * t;
       float t3 = t2 * t;
       Vector4f basis(1, t, t2, t3);
 
       // Coefficients for V = q(t) (Bernstein polynomials)
-      Vector4f b = bernstein * basis;
+      Vector4f b = bezier * basis;
 
       // Coefficients for T = q'(t) (derivatives of Bernstein polynomials)
-      Vector4f d = bernstein_d * basis;
+      Vector4f d = bezier_d * basis;
 
       // Calculate point and tangent vector
-      // We do this part explicitly because I don't want to write a 2x4 matrix
+      // We do this part explicitly because I don't want to write a 3x4 matrix
       // class just for this. Lazy!
       CurvePoint point;
       point.V = b[0] * p0 + b[1] * p1 + b[2] * p2 + b[3] * p3;
@@ -96,23 +96,27 @@ Curve evalBspline(const vector<Vector3f> &P, unsigned steps) {
     exit(0);
   }
 
-  // TODO:
-  // It is suggested that you implement this function by changing
-  // basis from B-spline to Bezier.  That way, you can just call
-  // your evalBezier function.
+  vector<Vector3f> P_bezier;
+  P_bezier.reserve(4 + 3 * (P.size() - 4));
 
-  cerr << "\t>>> evalBSpline has been called with the following input:" << endl;
+  // First four points can be converted directly
+  // "Unrolled" basis conversion, easier than building a matrix out of all the
+  // vectors
+  P_bezier.push_back((1.0 / 6.0) * (P[0] + 4 * P[1] + P[2]));
+  P_bezier.push_back((1.0 / 6.0) * (4 * P[1] + 2 * P[2]));
+  P_bezier.push_back((1.0 / 6.0) * (2 * P[1] + 4 * P[2]));
+  P_bezier.push_back((1.0 / 6.0) * (P[1] + 4 * P[2] + P[3]));
 
-  cerr << "\t>>> Control points (type vector< Vector3f >): " << endl;
-  for (unsigned i = 0; i < P.size(); ++i) {
-    // cerr << "\t>>> " << P[i] << endl;
+  // After that, for each point P[i], i >= 4 we need to push an entire segment
+  // of the last four points P[i-3]..P[i]
+  for (unsigned i = 4; i < P.size(); i++) {
+    P_bezier.push_back((1.0 / 6.0) * (P[i - 3] + 4 * P[i - 2] + P[i - 1]));
+    P_bezier.push_back((1.0 / 6.0) * (4 * P[i - 2] + 2 * P[i - 1]));
+    P_bezier.push_back((1.0 / 6.0) * (2 * P[i - 2] + 4 * P[i - 1]));
+    P_bezier.push_back((1.0 / 6.0) * (P[i - 2] + 4 * P[i - 1] + P[i]));
   }
 
-  cerr << "\t>>> Steps (type steps): " << steps << endl;
-  cerr << "\t>>> Returning empty curve." << endl;
-
-  // Return an empty curve right now.
-  return Curve();
+  return evalBezier(P_bezier, steps);
 }
 
 Curve evalCircle(float radius, unsigned steps) {
