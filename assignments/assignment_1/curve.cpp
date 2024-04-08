@@ -147,6 +147,38 @@ Curve evalCircle(float radius, unsigned steps) {
   return R;
 }
 
+Curve evalTrefoil(float radius, unsigned steps) {
+  Curve curve(steps + 1);
+
+  for (unsigned i = 0; i <= steps; i++) {
+    float t = 2.0f * M_PI * float(i) / steps;
+
+    // Position, trefoil knot is a parametric curve in 3D
+    // See https://en.wikipedia.org/wiki/Trefoil_knot
+    float x = sin(t) + 2 * sin(2 * t);
+    float y = cos(t) - 2 * cos(2 * t);
+    float z = -sin(3 * t);
+    curve[i].V = Vector3f(x, y, z) * radius;
+
+    // Tangent is the derivative
+    float x1 = cos(t) + 4 * cos(2 * t);
+    float y1 = -sin(t) + 4 * sin(2 * t);
+    float z1 = -3 * cos(3 * t);
+    curve[i].T = Vector3f(x1, y1, z1).normalized();
+
+    // Normal is the second derivative
+    float x2 = -sin(t) - 8 * sin(2 * t);
+    float y2 = -cos(t) + 8 * cos(2 * t);
+    float z2 = 9 * sin(3 * t);
+    curve[i].N = Vector3f(x2, y2, z2).normalized();
+
+    // Bitangent is T x N
+    curve[i].B = Vector3f::cross(curve[i].T, curve[i].N);
+  }
+
+  return curve;
+}
+
 void drawCurve(const Curve &curve, float framesize) {
   // Save current state of OpenGL
   glPushAttrib(GL_ALL_ATTRIB_BITS);

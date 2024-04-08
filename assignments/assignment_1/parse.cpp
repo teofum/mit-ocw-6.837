@@ -208,6 +208,20 @@ bool parseFile(
       dims.push_back(2);
       if (named)
         curveIndex[objName] = dims.size() - 1;
+    } else if (objType == "tref") {
+      cerr << " reading tref "
+           << "[" << objName << "]" << endl;
+
+      unsigned steps;
+      float rad;
+      in >> steps >> rad;
+      cerr << "  radius [" << rad << "]" << endl;
+
+      curves.push_back(evalTrefoil(rad, steps));
+      curveNames.push_back(objName);
+      dims.push_back(3);
+      if (named)
+        curveIndex[objName] = dims.size() - 1;
     } else {
       cerr << "failed: type " << objType << " unrecognized." << endl;
       return false;
