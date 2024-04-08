@@ -53,7 +53,7 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
 
   // Create vertices and normals
   for (unsigned i = 0; i < steps; i++) {
-    float phi = i * 2 * PI / (steps + 1);
+    float phi = i * 2 * PI / steps;
     Matrix3f rotation = Matrix3f::rotateY(phi);
 
     for (auto &point : profile) {
