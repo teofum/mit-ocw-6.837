@@ -17,6 +17,25 @@ static bool checkFlat(const Curve &profile) {
 
   return true;
 }
+
+void createFaces(Surface &surface, unsigned profileLength, unsigned steps) {
+  surface.VF.reserve((profileLength - 1) * steps * 2);
+
+  for (unsigned i = 1; i <= steps; i++) {
+    unsigned iLastProfile = (i - 1) * profileLength;
+    unsigned iProfile = (i % steps) * profileLength;
+
+    // Create a quad (two triangles)
+    for (unsigned j = 1; j < profileLength; j++) {
+      unsigned v00 = iLastProfile + j - 1, v01 = iLastProfile + j,
+               v10 = iProfile + j - 1, v11 = iProfile + j;
+
+      surface.VF.push_back(Tup3u(v00, v11, v10));
+      surface.VF.push_back(Tup3u(v00, v01, v11));
+    }
+  }
+}
+
 } // namespace
 
 Surface makeSurfRev(const Curve &profile, unsigned steps) {
@@ -31,7 +50,6 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
   unsigned profileLength = profile.size();
   surface.VV.reserve(profileLength * steps);
   surface.VN.reserve(profileLength * steps);
-  surface.VF.reserve((profileLength - 1) * steps * 2);
 
   // Create vertices and normals
   for (unsigned i = 0; i < steps; i++) {
@@ -53,20 +71,7 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
     }
   }
 
-  // Create faces
-  for (unsigned i = 1; i <= steps; i++) {
-    unsigned iLastProfile = (i - 1) * profileLength;
-    unsigned iProfile = (i % steps) * profileLength;
-
-    // Create a quad (two triangles)
-    for (unsigned j = 1; j < profileLength; j++) {
-      unsigned v00 = iLastProfile + j - 1, v01 = iLastProfile + j,
-               v10 = iProfile + j - 1, v11 = iProfile + j;
-
-      surface.VF.push_back(Tup3u(v00, v11, v10));
-      surface.VF.push_back(Tup3u(v00, v01, v11));
-    }
-  }
+  createFaces(surface, profileLength, steps);
 
   return surface;
 }
@@ -79,11 +84,34 @@ Surface makeGenCyl(const Curve &profile, const Curve &sweep) {
     exit(0);
   }
 
-  // TODO: Here you should build the surface.  See surf.h for details.
+  // Reserve capacity for surface vectors
+  unsigned profileLength = profile.size();
+  unsigned steps = sweep.size();
+  surface.VV.reserve(profileLength * steps);
+  surface.VN.reserve(profileLength * steps);
 
-  cerr << "\t>>> makeGenCyl called (but not implemented).\n\t>>> Returning "
-          "empty surface."
-       << endl;
+  // Create vertices and normals
+  for (auto &center : sweep) {
+    Matrix4f transform = Matrix4f(
+        Vector4f(center.N, 0), Vector4f(center.B, 0), Vector4f(center.T, 0),
+        Vector4f(center.V, 1), true
+    );
+
+    for (auto &point : profile) {
+      // Move the point and rotate it to match the sweep coordinate frame
+      Vector3f V = (transform * Vector4f(point.V, 1)).xyz();
+
+      // Rotate the normal to match sweep coordinate frame
+      // We can use the 3x3 matrix, and because NTB is an othonormal basis, once
+      // again the transpose of the inverse is the same matrix
+      Vector3f N = transform.getSubmatrix3x3(0, 0) * -point.N;
+
+      surface.VV.push_back(V);
+      surface.VN.push_back(N);
+    }
+  }
+
+  createFaces(surface, profileLength, steps);
 
   return surface;
 }
