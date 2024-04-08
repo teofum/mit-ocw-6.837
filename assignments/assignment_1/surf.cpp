@@ -1,5 +1,8 @@
 #include "surf.h"
 #include "extra.h"
+
+#define PI 3.141529f
+
 using namespace std;
 
 namespace {
@@ -24,11 +27,46 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
     exit(0);
   }
 
-  // TODO: Here you should build the surface.  See surf.h for details.
+  // Reserve capacity for surface vectors
+  unsigned profileLength = profile.size();
+  surface.VV.reserve(profileLength * steps);
+  surface.VN.reserve(profileLength * steps);
+  surface.VF.reserve((profileLength - 1) * steps * 2);
 
-  cerr << "\t>>> makeSurfRev called (but not implemented).\n\t>>> Returning "
-          "empty surface."
-       << endl;
+  // Create vertices and normals
+  for (unsigned i = 0; i < steps; i++) {
+    float phi = i * 2 * PI / (steps + 1);
+    Matrix3f rotation = Matrix3f::rotateY(phi);
+
+    for (auto &point : profile) {
+      // Rotate the point phi radians around the y-axis
+      // We don't need translation so we can use a 3x3 matrix
+      Vector3f V = rotation * point.V;
+
+      // Rotate the normal
+      // Actually the transpose of the inverse, happy coincidence it's the same
+      // matrix for rotation only
+      Vector3f N = rotation * -point.N; // Normals are flipped for some reason
+
+      surface.VV.push_back(V);
+      surface.VN.push_back(N);
+    }
+  }
+
+  // Create faces
+  for (unsigned i = 1; i <= steps; i++) {
+    unsigned iLastProfile = (i - 1) * profileLength;
+    unsigned iProfile = (i % steps) * profileLength;
+
+    // Create a quad (two triangles)
+    for (unsigned j = 1; j < profileLength; j++) {
+      unsigned v00 = iLastProfile + j - 1, v01 = iLastProfile + j,
+               v10 = iProfile + j - 1, v11 = iProfile + j;
+
+      surface.VF.push_back(Tup3u(v00, v11, v10));
+      surface.VF.push_back(Tup3u(v00, v01, v11));
+    }
+  }
 
   return surface;
 }
