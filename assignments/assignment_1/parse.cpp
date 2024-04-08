@@ -109,6 +109,16 @@ bool parseFile(
       dims.push_back(2);
       if (named)
         curveIndex[objName] = dims.size() - 1;
+    } else if (objType == "crom2") {
+      cerr << " reading crom2 "
+           << "[" << objName << "]" << endl;
+      float r;
+      in >> steps >> r;
+      curves.push_back(evalCatmullRom(cpsToAdd = readCps(in, 2), steps, r));
+      curveNames.push_back(objName);
+      dims.push_back(2);
+      if (named)
+        curveIndex[objName] = dims.size() - 1;
     } else if (objType == "bez3") {
       cerr << " reading bez3 "
            << "[" << objName << "]" << endl;
@@ -124,6 +134,16 @@ bool parseFile(
            << "[" << objName << "]" << endl;
       in >> steps;
       curves.push_back(evalBspline(cpsToAdd = readCps(in, 3), steps));
+      curveNames.push_back(objName);
+      dims.push_back(3);
+      if (named)
+        curveIndex[objName] = dims.size() - 1;
+    } else if (objType == "crom3") {
+      cerr << " reading crom3 "
+           << "[" << objName << "]" << endl;
+      float r;
+      in >> steps >> r;
+      curves.push_back(evalCatmullRom(cpsToAdd = readCps(in, 3), steps, r));
       curveNames.push_back(objName);
       dims.push_back(3);
       if (named)

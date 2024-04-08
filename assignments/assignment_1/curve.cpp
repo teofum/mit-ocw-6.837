@@ -118,6 +118,36 @@ Curve evalBspline(const vector<Vector3f> &P, unsigned steps) {
   return evalBezier(P_bezier, steps);
 }
 
+Curve evalCatmullRom(const std::vector<Vector3f> &P, unsigned steps, float r) {
+  // Check
+  if (P.size() < 4) {
+    cerr << "evalCatmullRom must be called with 4 or more control points."
+         << endl;
+    exit(0);
+  }
+
+  vector<Vector3f> P_bezier;
+  P_bezier.reserve(4 + 3 * (P.size() - 4));
+
+  // First four points can be converted directly
+  // "Unrolled" basis conversion, easier than building a matrix out of all the
+  // vectors
+  P_bezier.push_back(P[1]);
+  P_bezier.push_back((-r / 3) * P[0] + P[1] + (r / 3) * P[2]);
+  P_bezier.push_back((r / 3) * P[1] + P[2] + (-r / 3) * P[3]);
+  P_bezier.push_back(P[2]);
+
+  // After that, for each point P[i], i >= 4 we need to push an entire segment
+  // of the last four points P[i-3]..P[i]
+  for (unsigned i = 4; i < P.size(); i++) {
+    P_bezier.push_back((-r / 3) * P[i - 3] + P[i - 2] + (r / 3) * P[i - 1]);
+    P_bezier.push_back((r / 3) * P[i - 2] + P[i - 1] + (-r / 3) * P[i]);
+    P_bezier.push_back(P[i - 1]);
+  }
+
+  return evalBezier(P_bezier, steps);
+}
+
 Curve evalCircle(float radius, unsigned steps) {
   // This is a sample function on how to properly initialize a Curve
   // (which is a vector< CurvePoint >).
