@@ -51,7 +51,6 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
     int i = s * 3;
     Vector3f p0 = P[i], p1 = P[i + 1], p2 = P[i + 2], p3 = P[i + 3];
 
-    Vector3f lastB(0, 0, 1); // Arbitrary starting bitangent
     for (unsigned j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
       float t = (float)j / steps;
       float t2 = t * t;
@@ -71,13 +70,29 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
       point.V = b[0] * p0 + b[1] * p1 + b[2] * p2 + b[3] * p3;
       point.T = (d[0] * p0 + d[1] * p1 + d[2] * p2 + d[3] * p3).normalized();
 
-      // Calculate normal and bitangent vector
-      // If "seed" vector is parallel to normal change it to perpendicular
-      if (j == 0 && approx(Vector3f::dot(lastB, point.T), 1.0))
-        lastB = Vector3f(0, 1, 0);
+      if (i + j == 0) {
+        // Calculate the Frenet frame for the first point p0
+        Vector3f V(0, 0, 1);
+        if (approx(Vector3f::dot(V, point.T), 1))
+          V = Vector3f(0, 1, 0);
 
-      point.N = Vector3f::cross(lastB, point.T).normalized();
-      lastB = point.B = Vector3f::cross(point.T, point.N).normalized();
+        point.N = Vector3f::cross(V, point.T).normalized();
+        point.B = Vector3f::cross(point.T, point.N);
+      } else {
+        // Approximate RMF by the double reflection method
+        // Computation of Rotation Minimizing Frames, Wang, W. et al., 2008
+        const CurvePoint &last = curve[s * steps + j - 1];
+
+        Vector3f v1 = point.V - last.V; // Reflection vector 1
+        float c1 = v1.absSquared();
+        Vector3f Nl = last.N - (2.0f / c1) * Vector3f::dot(v1, last.N) * v1;
+        Vector3f Tl = last.T - (2.0f / c1) * Vector3f::dot(v1, last.T) * v1;
+
+        Vector3f v2 = point.T - Tl; // Reflection vector 2
+        float c2 = v2.absSquared();
+        point.N = Nl - (2.0f / c2) * Vector3f::dot(v2, Nl) * v2;
+        point.B = Vector3f::cross(point.T, point.N);
+      }
 
       // Add point to the curve
       curve.push_back(point);
