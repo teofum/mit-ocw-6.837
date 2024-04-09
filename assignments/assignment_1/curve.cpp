@@ -31,6 +31,50 @@ Matrix4f bezier(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
 // Derivatives of Bernstein polynomials
 Matrix4f bezier_d(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
 
+CurvePoint getBezierPoint(float t, const Vector3f *P, const CurvePoint *last) {
+  float t2 = t * t;
+  float t3 = t2 * t;
+  Vector4f basis(1, t, t2, t3);
+
+  // Coefficients for V = q(t) (Bernstein polynomials)
+  Vector4f b = bezier * basis;
+
+  // Coefficients for T = q'(t) (derivatives of Bernstein polynomials)
+  Vector4f d = bezier_d * basis;
+
+  // Calculate point and tangent vector
+  // We do this part explicitly because I don't want to write a 3x4 matrix
+  // class just for this. Lazy!
+  CurvePoint point;
+  point.V = b[0] * P[0] + b[1] * P[1] + b[2] * P[2] + b[3] * P[3];
+  point.T =
+      (d[0] * P[0] + d[1] * P[1] + d[2] * P[2] + d[3] * P[3]).normalized();
+
+  if (last == nullptr) {
+    // Calculate the Frenet frame for the first point p0
+    Vector3f V(0, 0, 1);
+    if (approx(Vector3f::dot(V, point.T), 1))
+      V = Vector3f(0, 1, 0);
+
+    point.N = Vector3f::cross(V, point.T).normalized();
+    point.B = Vector3f::cross(point.T, point.N);
+  } else {
+    // Approximate RMF by the double reflection method
+    // Computation of Rotation Minimizing Frames, Wang, W. et al., 2008
+    Vector3f v1 = point.V - last->V; // Reflection vector 1
+    float c1 = v1.absSquared();
+    Vector3f Nl = last->N - (2.0f / c1) * Vector3f::dot(v1, last->N) * v1;
+    Vector3f Tl = last->T - (2.0f / c1) * Vector3f::dot(v1, last->T) * v1;
+
+    Vector3f v2 = point.T - Tl; // Reflection vector 2
+    float c2 = v2.absSquared();
+    point.N = Nl - (2.0f / c2) * Vector3f::dot(v2, Nl) * v2;
+    point.B = Vector3f::cross(point.T, point.N);
+  }
+
+  return point;
+}
+
 } // namespace
 
 Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
@@ -48,53 +92,12 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
   cerr << segments << " segments, " << points << " points" << endl;
 
   for (unsigned s = 0; s < segments; s++) {
-    int i = s * 3;
-    Vector3f p0 = P[i], p1 = P[i + 1], p2 = P[i + 2], p3 = P[i + 3];
-
+    const Vector3f *firstPoint = &P[s * 3];
     for (unsigned j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
       float t = (float)j / steps;
-      float t2 = t * t;
-      float t3 = t2 * t;
-      Vector4f basis(1, t, t2, t3);
 
-      // Coefficients for V = q(t) (Bernstein polynomials)
-      Vector4f b = bezier * basis;
-
-      // Coefficients for T = q'(t) (derivatives of Bernstein polynomials)
-      Vector4f d = bezier_d * basis;
-
-      // Calculate point and tangent vector
-      // We do this part explicitly because I don't want to write a 3x4 matrix
-      // class just for this. Lazy!
-      CurvePoint point;
-      point.V = b[0] * p0 + b[1] * p1 + b[2] * p2 + b[3] * p3;
-      point.T = (d[0] * p0 + d[1] * p1 + d[2] * p2 + d[3] * p3).normalized();
-
-      if (i + j == 0) {
-        // Calculate the Frenet frame for the first point p0
-        Vector3f V(0, 0, 1);
-        if (approx(Vector3f::dot(V, point.T), 1))
-          V = Vector3f(0, 1, 0);
-
-        point.N = Vector3f::cross(V, point.T).normalized();
-        point.B = Vector3f::cross(point.T, point.N);
-      } else {
-        // Approximate RMF by the double reflection method
-        // Computation of Rotation Minimizing Frames, Wang, W. et al., 2008
-        const CurvePoint &last = curve[s * steps + j - 1];
-
-        Vector3f v1 = point.V - last.V; // Reflection vector 1
-        float c1 = v1.absSquared();
-        Vector3f Nl = last.N - (2.0f / c1) * Vector3f::dot(v1, last.N) * v1;
-        Vector3f Tl = last.T - (2.0f / c1) * Vector3f::dot(v1, last.T) * v1;
-
-        Vector3f v2 = point.T - Tl; // Reflection vector 2
-        float c2 = v2.absSquared();
-        point.N = Nl - (2.0f / c2) * Vector3f::dot(v2, Nl) * v2;
-        point.B = Vector3f::cross(point.T, point.N);
-      }
-
-      // Add point to the curve
+      CurvePoint *last = (s + j == 0) ? nullptr : &curve[s * steps + j - 1];
+      CurvePoint point = getBezierPoint(t, firstPoint, last);
       curve.push_back(point);
     }
   }
