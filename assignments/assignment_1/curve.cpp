@@ -75,6 +75,46 @@ CurvePoint getBezierPoint(float t, const Vector3f *P, const CurvePoint *last) {
   return point;
 }
 
+bool isClosed(const Curve &curve) {
+  unsigned last = curve.size() - 1;
+  return approx((curve[0].V - curve[last].V).absSquared(), 0) &&
+         approx(Vector3f::dot(curve[0].T, curve[last].T), 1);
+}
+
+void fixClosedCurveError(Curve &curve) {
+  if (!isClosed(curve))
+    return;
+
+  unsigned last = curve.size() - 1;
+  float cosTheta = Vector3f::dot(curve[0].N, curve[last].N);
+  if (approx(cosTheta, 1))
+    return; // Normals match at beginning and end
+
+  float sinTheta = Vector3f::dot(curve[0].N, curve[last].B);
+  float theta = atan2(sinTheta, cosTheta);
+  if (theta > M_PI)
+    theta -= 2.0 * M_PI;
+
+  cerr << "fixing closed curve error, theta = " << theta << endl;
+  cerr << "c = " << cosTheta << ", s = " << sinTheta << endl;
+  for (unsigned i = last; i > 0; i--) {
+    float t = (float)i / last;
+
+    float c = cos(t * theta), s = sin(t * theta);
+    float x = curve[i].T.x(), y = curve[i].T.y(), z = curve[i].T.z();
+
+    // Rotate theta radians along the axis of the tangent of curve[i]
+    Matrix3f rotation(
+        c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s,
+        y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s,
+        z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + z * z * (1 - c)
+    );
+
+    curve[i].N = rotation * curve[i].N;
+    curve[i].B = rotation * curve[i].B;
+  }
+}
+
 } // namespace
 
 Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
@@ -93,7 +133,9 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
 
   for (unsigned s = 0; s < segments; s++) {
     const Vector3f *firstPoint = &P[s * 3];
-    for (unsigned j = 0; j <= (s == segments - 1 ? steps : steps - 1); j++) {
+    unsigned k = s == segments - 1 ? steps : steps - 1;
+
+    for (unsigned j = 0; j <= k; j++) {
       float t = (float)j / steps;
 
       CurvePoint *last = (s + j == 0) ? nullptr : &curve[s * steps + j - 1];
@@ -102,7 +144,7 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
     }
   }
 
-  cerr << curve.size() << " actual points" << endl;
+  fixClosedCurveError(curve);
 
   return curve;
 }
