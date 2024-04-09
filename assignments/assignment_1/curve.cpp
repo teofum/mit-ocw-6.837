@@ -90,20 +90,22 @@ void fixClosedCurveError(Curve &curve) {
   if (approx(cosTheta, 1))
     return; // Normals match at beginning and end
 
+  // Because the tangents match, normals and bitangents are all coplanar, so
+  // we can get the sine this way
   float sinTheta = Vector3f::dot(curve[0].N, curve[last].B);
+  // Then use sin, cos to get angle in the axis aligned with the tangent
   float theta = atan2(sinTheta, cosTheta);
   if (theta > M_PI)
     theta -= 2.0 * M_PI;
 
-  cerr << "fixing closed curve error, theta = " << theta << endl;
-  cerr << "c = " << cosTheta << ", s = " << sinTheta << endl;
+  // Spread the error across the entire curve, this is like "twisting" the curve
   for (unsigned i = last; i > 0; i--) {
     float t = (float)i / last;
 
     float c = cos(t * theta), s = sin(t * theta);
     float x = curve[i].T.x(), y = curve[i].T.y(), z = curve[i].T.z();
 
-    // Rotate theta radians along the axis of the tangent of curve[i]
+    // Rotate (t * theta) radians along the axis of the tangent of curve[i]
     Matrix3f rotation(
         c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s,
         y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s,
