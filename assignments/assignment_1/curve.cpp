@@ -117,6 +117,77 @@ void fixClosedCurveError(Curve &curve) {
   }
 }
 
+float bezierError(const Vector3f *points) {
+  Vector3f segment = points[3] - points[0];
+  float segmentLength = segment.absSquared();
+
+  float t1 = fmax(
+      0, fmin(1, Vector3f::dot(points[1] - points[0], segment) / segmentLength)
+  );
+  Vector3f p1 = points[0] + t1 * segment;
+  float d1 = (p1 - points[1]).abs();
+
+  float t2 = fmax(
+      0, fmin(1, Vector3f::dot(points[2] - points[0], segment) / segmentLength)
+  );
+  Vector3f p2 = points[0] + t2 * segment;
+  float d2 = (p2 - points[2]).abs();
+
+  return fmax(d1, d2);
+}
+
+// Subdivide bezier segment using de Casteljau's algorithm
+vector<Vector3f> subdivide(const Vector3f *p, float t) {
+  vector<Vector3f> newPoints(7);
+
+  Vector3f r0 = (1 - t) * p[0] + t * p[1];
+  Vector3f r1 = (1 - t) * p[1] + t * p[2];
+  Vector3f r2 = (1 - t) * p[2] + t * p[3];
+
+  Vector3f s0 = (1 - t) * r0 + t * r1;
+  Vector3f s1 = (1 - t) * r1 + t * r2;
+
+  Vector3f t0 = (1 - t) * s0 + t * s1;
+
+  newPoints[0] = p[0];
+  newPoints[1] = r0;
+  newPoints[2] = s0;
+  newPoints[3] = t0;
+  newPoints[4] = s1;
+  newPoints[5] = r2;
+  newPoints[6] = p[3];
+
+  return newPoints;
+}
+
+constexpr float delta = 0.1f;
+
+void addBezierSegment(
+    Curve &curve,
+    const Vector3f *points,
+    unsigned steps,
+    unsigned s,
+    bool lastSegment
+) {
+  if (bezierError(points) < delta) {
+    unsigned k = lastSegment ? steps : steps - 1;
+
+    for (unsigned j = 0; j <= k; j++) {
+      float t = (float)j / steps;
+
+      CurvePoint *last = (s + j == 0) ? nullptr : &curve[s * steps + j - 1];
+      CurvePoint point = getBezierPoint(t, points, last);
+      curve.push_back(point);
+    }
+  } else {
+    // Recursive subdivision
+    auto subdivision = subdivide(points, 0.5f);
+
+    addBezierSegment(curve, &subdivision[0], steps, s, false);
+    addBezierSegment(curve, &subdivision[3], steps, s, lastSegment);
+  }
+}
+
 } // namespace
 
 Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
@@ -126,24 +197,13 @@ Curve evalBezier(const vector<Vector3f> &P, unsigned steps) {
     exit(0);
   }
 
-  unsigned segments = (P.size() - 1) / 3;       // # of curve segments
-  unsigned points = (steps - 1) * segments + 2; // # of points in approximation
+  unsigned segments = (P.size() - 1) / 3; // # of curve segments
   Curve curve;
-  curve.reserve(points); // pre-allocate
 
-  cerr << segments << " segments, " << points << " points" << endl;
+  cerr << segments << " segments" << endl;
 
   for (unsigned s = 0; s < segments; s++) {
-    const Vector3f *firstPoint = &P[s * 3];
-    unsigned k = s == segments - 1 ? steps : steps - 1;
-
-    for (unsigned j = 0; j <= k; j++) {
-      float t = (float)j / steps;
-
-      CurvePoint *last = (s + j == 0) ? nullptr : &curve[s * steps + j - 1];
-      CurvePoint point = getBezierPoint(t, firstPoint, last);
-      curve.push_back(point);
-    }
+    addBezierSegment(curve, &P[s * 3], steps, s, s == segments - 1);
   }
 
   fixClosedCurveError(curve);
