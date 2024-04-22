@@ -1,9 +1,9 @@
 #include "surf.h"
 #include "extra.h"
 
-#define PI 3.141529f
-
 using namespace std;
+
+#define RAD(deg) ((deg) * M_PI / 180)
 
 namespace {
 
@@ -36,6 +36,73 @@ void createFaces(Surface &surface, unsigned profileLength, unsigned steps) {
   }
 }
 
+constexpr float cornerThreshold = RAD(30);
+
+static bool isCorner(const CurvePoint &point, const CurvePoint *last) {
+  return last != nullptr &&
+         Vector3f::dot(point.T, last->T) < cos(cornerThreshold);
+}
+
+void appendSegment(
+    Surface &surface,
+    const Curve &profile,
+    const Vector3f &pos,
+    const CurvePoint &frame
+) {
+  Matrix4f transform = Matrix4f(
+      Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
+      Vector4f(pos, 1), true
+  );
+
+  for (auto &point : profile) {
+    // Move the point and rotate it to match the sweep coordinate frame
+    Vector3f V = (transform * Vector4f(point.V, 1)).xyz();
+
+    // Rotate the normal to match sweep coordinate frame
+    // We can use the 3x3 matrix, and because NTB is an othonormal basis,
+    // once again the transpose of the inverse is the same matrix
+    Vector3f N = transform.getSubmatrix3x3(0, 0) * -point.N;
+
+    surface.VV.push_back(V);
+    surface.VN.push_back(N);
+  }
+}
+
+void appendCorner(
+    Surface &surface,
+    const Curve &profile,
+    const CurvePoint &frame,
+    const CurvePoint &last
+) {
+  Matrix4f transform = Matrix4f(
+      Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
+      Vector4f(frame.V, 1), true
+  );
+  Matrix4f transformLast = Matrix4f(
+      Vector4f(last.N, 0), Vector4f(last.B, 0), Vector4f(last.T, 0),
+      Vector4f(frame.V, 1), true
+  );
+
+  for (auto &point : profile) {
+    Vector3f P0 = transformLast.getSubmatrix3x3(0, 0) * point.V;
+    Vector3f P1 = transform.getSubmatrix3x3(0, 0) * point.V;
+
+    Vector3f N0 = transformLast.getSubmatrix3x3(0, 0) * -point.N;
+    Vector3f N1 = transform.getSubmatrix3x3(0, 0) * -point.N;
+
+    float t = (P1 - P0).abs() / (last.T + frame.T).abs();
+    float sign = Vector3f::dot(P0, last.N) > 0 ? 1 : -1;
+    if (Vector3f::dot(last.N, frame.T) > 0.5)
+      sign = -sign;
+
+    Vector3f P = P0 + t * sign * last.T + frame.V;
+    Vector3f N = (N0 + N1).normalized();
+
+    surface.VV.push_back(P);
+    surface.VN.push_back(N);
+  }
+}
+
 } // namespace
 
 Surface makeSurfRev(const Curve &profile, unsigned steps) {
@@ -53,7 +120,7 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
 
   // Create vertices and normals
   for (unsigned i = 0; i < steps; i++) {
-    float phi = i * 2 * PI / steps;
+    float phi = i * 2 * M_PI / steps;
     Matrix3f rotation = Matrix3f::rotateY(phi);
 
     for (auto &point : profile) {
@@ -91,24 +158,15 @@ Surface makeGenCyl(const Curve &profile, const Curve &sweep) {
   surface.VN.reserve(profileLength * steps);
 
   // Create vertices and normals
+  const CurvePoint *last = nullptr;
   for (auto &center : sweep) {
-    Matrix4f transform = Matrix4f(
-        Vector4f(center.N, 0), Vector4f(center.B, 0), Vector4f(center.T, 0),
-        Vector4f(center.V, 1), true
-    );
-
-    for (auto &point : profile) {
-      // Move the point and rotate it to match the sweep coordinate frame
-      Vector3f V = (transform * Vector4f(point.V, 1)).xyz();
-
-      // Rotate the normal to match sweep coordinate frame
-      // We can use the 3x3 matrix, and because NTB is an othonormal basis, once
-      // again the transpose of the inverse is the same matrix
-      Vector3f N = transform.getSubmatrix3x3(0, 0) * -point.N;
-
-      surface.VV.push_back(V);
-      surface.VN.push_back(N);
+    if (isCorner(center, last)) {
+      appendSegment(surface, profile, center.V, *last);
+      appendCorner(surface, profile, center, *last);
     }
+
+    appendSegment(surface, profile, center.V, center);
+    last = &center;
   }
 
   createFaces(surface, profileLength, steps);
