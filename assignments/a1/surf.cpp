@@ -143,7 +143,12 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
   return surface;
 }
 
-Surface makeGenCyl(const Curve &profile, const Curve &sweep) {
+Surface makeGenCyl(
+    const Curve &profile,
+    const Curve &sweep,
+    const Curve &scale,
+    bool useScaleCurve
+) {
   Surface surface;
 
   if (!checkFlat(profile)) {

@@ -31,7 +31,12 @@ void drawNormals(const Surface &surface, float len);
 // y-axis.  The number of divisions is given by steps.
 Surface makeSurfRev(const Curve &profile, unsigned steps);
 
-Surface makeGenCyl(const Curve &profile, const Curve &sweep);
+Surface makeGenCyl(
+    const Curve &profile,
+    const Curve &sweep,
+    const Curve &scale,
+    bool useScaleCurve
+);
 
 void outputObjFile(std::ostream &out, const Surface &surface);
 

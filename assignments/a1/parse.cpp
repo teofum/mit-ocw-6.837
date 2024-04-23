@@ -181,17 +181,16 @@ bool parseFile(
            << "[" << objName << "]" << endl;
 
       // Name of the profile curve and sweep curve
-      string profName, sweepName;
-      in >> profName >> sweepName;
+      string profName, sweepName, scaleName;
+      in >> profName >> sweepName >> scaleName;
 
-      cerr << "  profile [" << profName << "], sweep [" << sweepName << "]"
-           << endl;
+      cerr << "  profile [" << profName << "], sweep [" << sweepName
+           << "], scale [" << scaleName << "]" << endl;
 
-      map<string, unsigned>::const_iterator itP, itS;
+      map<string, unsigned>::const_iterator itP, itS, itSc;
 
       // Failure checks for profile
       itP = curveIndex.find(profName);
-
       if (itP == curveIndex.end()) {
         cerr << "failed: [" << profName << "] doesn't exist!" << endl;
         return false;
@@ -208,8 +207,14 @@ bool parseFile(
         return false;
       }
 
+      // Get scale curve if it exists
+      itSc = curveIndex.find(scaleName);
+
       // Make the surface
-      surfaces.push_back(makeGenCyl(curves[itP->second], curves[itS->second]));
+      surfaces.push_back(makeGenCyl(
+          curves[itP->second], curves[itS->second], curves[itSc->second],
+          itSc != curveIndex.end()
+      ));
       surfaceNames.push_back(objName);
       if (named)
         surfaceIndex[objName] = surfaceNames.size() - 1;
