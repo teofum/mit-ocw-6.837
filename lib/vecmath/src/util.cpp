@@ -2,9 +2,9 @@
   #include <windows.h>
 #endif
 
-#include <GL/gl.h>
+#include <OpenGL/gl.h>
 
-#include "util.h"
+#include "../include/util.h"
 
 static void convert3to4(const Matrix3f& M, GLfloat *dest)
 {

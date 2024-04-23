@@ -2,9 +2,9 @@
 #include <cmath>
 #include <cstdio>
 
-#include "Quat4f.h"
-#include "Vector3f.h"
-#include "Vector4f.h"
+#include "../include/Quat4f.h"
+#include "../include/Vector3f.h"
+#include "../include/Vector4f.h"
 
 //////////////////////////////////////////////////////////////////////////
 // Public

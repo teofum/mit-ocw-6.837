@@ -3,8 +3,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "Vector2f.h"
-#include "Vector3f.h"
+#include "../include/Vector2f.h"
+#include "../include/Vector3f.h"
 
 //////////////////////////////////////////////////////////////////////////
 // Public

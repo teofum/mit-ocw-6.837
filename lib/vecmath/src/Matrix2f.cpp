@@ -1,11 +1,11 @@
-#include "Matrix2f.h"
+#include "../include/Matrix2f.h"
 
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 
-#include "Vector2f.h"
+#include "../include/Vector2f.h"
 
 Matrix2f::Matrix2f( float fill )
 {
