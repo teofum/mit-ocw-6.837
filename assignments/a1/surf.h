@@ -38,6 +38,12 @@ Surface makeGenCyl(
     bool useScaleCurve
 );
 
+Surface makeBirail(
+  const Curve &profile,
+  const Curve &sweep,
+  const Curve &sweep2
+);
+
 void outputObjFile(std::ostream &out, const Surface &surface);
 
 #endif

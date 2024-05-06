@@ -1,0 +1,19 @@
+bez2 profile 20 4
+[0 0]
+[1 1]
+[-1 1]
+[0 2]
+
+bez3 sweep 20 4
+[-1 0 0]
+[-1 1 1]
+[-1 2 -1]
+[-1 3 0]
+
+bez3 sweep2 20 4
+[1 0 0]
+[2 1 1]
+[2 2 -1]
+[1 3 0]
+
+birail test profile sweep sweep2

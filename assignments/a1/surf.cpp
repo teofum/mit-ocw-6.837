@@ -6,22 +6,28 @@ using namespace std;
 #define RAD(deg) ((deg) * M_PI / 180)
 
 namespace {
+// Approximately equal to.  We don't want to use == because of
+// precision issues with floating point.
+inline bool approx(float lhs, float rhs) {
+  const float eps = 1e-8f;
+  return abs(lhs - rhs) < eps;
+}
 
 // We're only implenting swept surfaces where the profile curve is
 // flat on the xy-plane.  This is a check function.
 bool checkFlat(const Curve &profile) {
   for (auto point : profile)
-    if (point.V[2] != 0.0 || point.T[2] != 0.0 ||
-        point.N[2] != 0.0)
+    if (!approx(point.V[2], 0) || !approx(point.T[2], 0) || !approx(point.N[2], 0))
       return false;
 
   return true;
 }
 
-void createFaces(Surface &surface, unsigned profileLength, unsigned steps) {
+void createFaces(Surface &surface, unsigned profileLength, unsigned steps, bool loop = true) {
   surface.VF.reserve((profileLength - 1) * steps * 2);
 
-  for (unsigned i = 1; i <= steps; i++) {
+  unsigned last = loop ? steps + 1 : steps;
+  for (unsigned i = 1; i < last; i++) {
     unsigned iLastProfile = (i - 1) * profileLength;
     unsigned iProfile = (i % steps) * profileLength;
 
@@ -108,6 +114,9 @@ void appendCorner(
   }
 }
 
+// Assume both the sweep and scale curves are uniform
+// Supporting non-uniform curves is far more complicated and this works
+// well enough
 Vector2f getScale(const Curve &scale, float t) {
   float st = t * (float)(scale.size() - 1);
   int i = (int)st;
@@ -118,6 +127,17 @@ Vector2f getScale(const Curve &scale, float t) {
   };
 
   return Vector2f::lerp(scale[i].V.xy(), scale[i + 1].V.xy(), localT);
+}
+
+CurvePoint getFrame(const Vector3f &vec) {
+  CurvePoint frame;
+  frame.T = vec;
+  Vector3f X(0, 0, 1);
+  if (abs(Vector3f::dot(X, frame.T) - 1) < 1e-8)
+    X = Vector3f(0, 1, 0);
+
+  frame.N = Vector3f::cross(X, frame.T).normalized();
+  frame.B = Vector3f::cross(frame.T, frame.N);
 }
 
 } // namespace
@@ -200,6 +220,86 @@ Surface makeGenCyl(
   }
 
   createFaces(surface, profileLength, steps);
+
+  return surface;
+}
+
+Surface makeBirail(
+  const Curve &profile,
+  const Curve &sweep,
+  const Curve &sweep2
+) {
+  Surface surface;
+
+  if (!checkFlat(profile)) {
+    cerr << "birail profile curve must be flat on xy plane." << endl;
+    exit(0);
+  }
+
+  if (sweep.size() != sweep2.size()) {
+    cerr << "birail sweep curves must have the same number of control points." << endl;
+    exit(0);
+  }
+
+  // Reserve capacity for surface vectors
+  unsigned profileLength = profile.size();
+  unsigned steps = sweep.size();
+  surface.VV.reserve(profileLength * steps);
+  surface.VN.reserve(profileLength * steps);
+
+  // We need to transform the profile curve so its start and endpoints match
+  // the ith point of either sweep curve
+  // First, get a frame for the (pn - p0) vector
+  CurvePoint frame;
+  frame.T = (profile[profileLength - 1].V - profile[0].V).normalized();
+  Vector3f X(0, 0, 1);
+  if (abs(Vector3f::dot(X, frame.T) - 1) < 1e-8)
+    X = Vector3f(0, 1, 0);
+
+  frame.N = Vector3f::cross(X, frame.T).normalized();
+  frame.B = Vector3f::cross(frame.T, frame.N);
+  frame.V = profile[0].V;
+
+  // Then, calculate the inverse transform (P -> canonical basis)
+  Matrix4f pInverse = Matrix4f(
+    Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
+    Vector4f(frame.V, 1), true
+  ).inverse();
+
+  float baseScale = (profile[profileLength - 1].V - profile[0].V).abs();
+
+  // Create vertices and normals
+  for (unsigned i = 0; i < steps; i++) {
+    auto &from = sweep[i];
+    auto &to = sweep2[i];
+
+    float scale = (to.V - from.V).abs() / baseScale;
+    Matrix4f mScale = Matrix4f::uniformScaling(scale);
+    CurvePoint sweepFrame;
+    sweepFrame.T = (to.V - from.V).normalized();
+    sweepFrame.N = -from.B;
+    sweepFrame.B = Vector3f::cross(sweepFrame.T, sweepFrame.N);
+    sweepFrame.V = profile[0].V;
+    sweepFrame.V = from.V;
+    Matrix4f sTransform = Matrix4f(
+      Vector4f(sweepFrame.N, 0), Vector4f(sweepFrame.B, 0),
+      Vector4f(sweepFrame.T, 0), Vector4f(sweepFrame.V, 1), true
+    );
+
+    // profile -> sweep
+    Matrix4f transform = sTransform * pInverse;
+    Matrix3f transformNormal = transform.getSubmatrix3x3(0, 0);
+
+    for (auto &point : profile) {
+      Vector3f V = (transform * mScale * Vector4f(point.V, 1)).xyz();
+      Vector3f N = transformNormal * -point.N; // Normals are flipped for some reason
+
+      surface.VV.push_back(V);
+      surface.VN.push_back(N);
+    }
+  }
+
+  createFaces(surface, profileLength, steps, false);
 
   return surface;
 }

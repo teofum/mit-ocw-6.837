@@ -220,7 +220,49 @@ bool parseFile(
       surfaceNames.push_back(objName);
       if (named)
         surfaceIndex[objName] = surfaceNames.size() - 1;
+    } else if (objType == "birail") {
+      cerr << " reading birail "
+           << "[" << objName << "]" << endl;
 
+      // Name of the profile curve and sweep curve
+      string profName, sweepName, sweep2Name;
+      in >> profName >> sweepName >> sweep2Name;
+
+      cerr << "  profile [" << profName << "], sweep [" << sweepName
+           << ", " << sweep2Name << "]" << endl;
+
+      map<string, unsigned>::const_iterator itP, itS, itS2;
+
+      // Failure checks for profile
+      itP = curveIndex.find(profName);
+      if (itP == curveIndex.end()) {
+        cerr << "failed: [" << profName << "] doesn't exist!" << endl;
+        return false;
+      }
+      if (dims[itP->second] != 2) {
+        cerr << "failed: [" << profName << "] isn't 2d!" << endl;
+        return false;
+      }
+
+      // Failure checks for sweep
+      itS = curveIndex.find(sweepName);
+      if (itS == curveIndex.end()) {
+        cerr << "failed: [" << sweepName << "] doesn't exist!" << endl;
+        return false;
+      }
+      itS2 = curveIndex.find(sweep2Name);
+      if (itS2 == curveIndex.end()) {
+        cerr << "failed: [" << sweep2Name << "] doesn't exist!" << endl;
+        return false;
+      }
+
+      // Make the surface
+      surfaces.push_back(makeBirail(
+        curves[itP->second], curves[itS->second], curves[itS2->second]
+      ));
+      surfaceNames.push_back(objName);
+      if (named)
+        surfaceIndex[objName] = surfaceNames.size() - 1;
     } else if (objType == "circ") {
       cerr << " reading circ "
            << "[" << objName << "]" << endl;
