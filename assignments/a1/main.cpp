@@ -1,19 +1,11 @@
-#ifdef WIN32
-#include <windows.h>
-#endif
-
-#ifdef __APPLE__
 #include <GLUT/glut.h>
 /* Just in case we need these later
 // References:
 // http://alumni.cs.ucsb.edu/~wombatty/tutorials/opengl_mac_osx.html
-// # include <OpenGL/gl.h>
-// # include <OpenGL/glu.h>
+// #include <OpenGL/gl.h>
+// #include <OpenGL/glu.h>
 */
 #define GL_SILENCE_DEPRECATION 1 // Make clang shut up
-#else
-#include <GL/glut.h>
-#endif
 
 #include <cmath>
 #include <cstdlib>

@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.27)
 project(mit_ocw_6_837)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-framework GLUT -framework OpenGL -framework Cocoa -O2 -Wall -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "-O2 -Wall -Wno-deprecated-declarations")
 
 include_directories(lib/vecmath/include)
+link_libraries("-framework GLUT -framework OpenGL -framework Cocoa")
 
 add_library(vecmath lib/vecmath/src/Matrix2f.cpp lib/vecmath/src/Matrix3f.cpp lib/vecmath/src/Matrix4f.cpp lib/vecmath/src/Quat4f.cpp lib/vecmath/src/util.cpp lib/vecmath/src/Vector2f.cpp lib/vecmath/src/Vector3f.cpp lib/vecmath/src/Vector4f.cpp)
 

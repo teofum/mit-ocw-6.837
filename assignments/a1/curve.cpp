@@ -1,20 +1,7 @@
-#ifdef __APPLE__
 #include <OpenGL/gl.h>
-/* Just in case we need these later
-// References:
-// http://alumni.cs.ucsb.edu/~wombatty/tutorials/opengl_mac_osx.html
-// # include <OpenGL/gl.h>
-// # include <OpenGL/glu.h>
-*/
-#else
-#include <GL/gl.h>
-#endif
 
 #include "curve.h"
 #include "extra.h"
-#ifdef WIN32
-#include <windows.h>
-#endif
 
 using namespace std;
 

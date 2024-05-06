@@ -9,10 +9,10 @@ namespace {
 
 // We're only implenting swept surfaces where the profile curve is
 // flat on the xy-plane.  This is a check function.
-static bool checkFlat(const Curve &profile) {
-  for (unsigned i = 0; i < profile.size(); i++)
-    if (profile[i].V[2] != 0.0 || profile[i].T[2] != 0.0 ||
-        profile[i].N[2] != 0.0)
+bool checkFlat(const Curve &profile) {
+  for (auto point : profile)
+    if (point.V[2] != 0.0 || point.T[2] != 0.0 ||
+        point.N[2] != 0.0)
       return false;
 
   return true;
@@ -38,25 +38,27 @@ void createFaces(Surface &surface, unsigned profileLength, unsigned steps) {
 
 constexpr float cornerThreshold = RAD(30);
 
-static bool isCorner(const CurvePoint &point, const CurvePoint *last) {
-  return last != nullptr &&
-         Vector3f::dot(point.T, last->T) < cos(cornerThreshold);
+bool isCorner(const CurvePoint &point, const CurvePoint *last) {
+  return Vector3f::dot(point.T, last->T) < cos(cornerThreshold);
 }
 
 void appendSegment(
     Surface &surface,
     const Curve &profile,
     const Vector3f &pos,
-    const CurvePoint &frame
+    const CurvePoint &frame,
+    const Vector2f &pScale
 ) {
   Matrix4f transform = Matrix4f(
       Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
       Vector4f(pos, 1), true
   );
 
+  Matrix4f scale = Matrix4f::scaling(pScale.x(), pScale.y(), 1.0f);
+
   for (auto &point : profile) {
     // Move the point and rotate it to match the sweep coordinate frame
-    Vector3f V = (transform * Vector4f(point.V, 1)).xyz();
+    Vector3f V = (transform * scale * Vector4f(point.V, 1)).xyz();
 
     // Rotate the normal to match sweep coordinate frame
     // We can use the 3x3 matrix, and because NTB is an othonormal basis,
@@ -72,7 +74,8 @@ void appendCorner(
     Surface &surface,
     const Curve &profile,
     const CurvePoint &frame,
-    const CurvePoint &last
+    const CurvePoint &last,
+    const Vector2f &pScale
 ) {
   Matrix4f transform = Matrix4f(
       Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
@@ -83,9 +86,11 @@ void appendCorner(
       Vector4f(frame.V, 1), true
   );
 
+  Matrix4f scale = Matrix4f::scaling(pScale.x(), pScale.y(), 1.0f);
+
   for (auto &point : profile) {
-    Vector3f P0 = transformLast.getSubmatrix3x3(0, 0) * point.V;
-    Vector3f P1 = transform.getSubmatrix3x3(0, 0) * point.V;
+    Vector3f P0 = (transformLast * scale).getSubmatrix3x3(0, 0) * point.V;
+    Vector3f P1 = (transform * scale).getSubmatrix3x3(0, 0) * point.V;
 
     Vector3f N0 = transformLast.getSubmatrix3x3(0, 0) * -point.N;
     Vector3f N1 = transform.getSubmatrix3x3(0, 0) * -point.N;
@@ -101,6 +106,18 @@ void appendCorner(
     surface.VV.push_back(P);
     surface.VN.push_back(N);
   }
+}
+
+Vector2f getScale(const Curve &scale, float t) {
+  float st = t * (float)(scale.size() - 1);
+  int i = (int)st;
+  float localT = st - (float)i;
+  if (i == scale.size() - 1) {
+    i--;
+    localT = 1;
+  };
+
+  return Vector2f::lerp(scale[i].V.xy(), scale[i + 1].V.xy(), localT);
 }
 
 } // namespace
@@ -164,14 +181,22 @@ Surface makeGenCyl(
 
   // Create vertices and normals
   const CurvePoint *last = nullptr;
+  int i = 0;
+  Vector2f vScale(1.0f, 1.0f);
   for (auto &center : sweep) {
-    if (isCorner(center, last)) {
-      appendSegment(surface, profile, center.V, *last);
-      appendCorner(surface, profile, center, *last);
+    if (useScaleCurve) {
+      float t = (float) i / (float) (sweep.size() - 1);
+      vScale = getScale(scale, t);
     }
 
-    appendSegment(surface, profile, center.V, center);
+    if (last != nullptr && isCorner(center, last)) {
+      appendSegment(surface, profile, center.V, *last, vScale);
+      appendCorner(surface, profile, center, *last, vScale);
+    }
+
+    appendSegment(surface, profile, center.V, center, vScale);
     last = &center;
+    i++;
   }
 
   createFaces(surface, profileLength, steps);

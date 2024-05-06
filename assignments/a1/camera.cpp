@@ -1,18 +1,9 @@
-#ifdef __APPLE__
+#include <iostream>
 #include <OpenGL/glu.h>
-/* Just in case we need these later
-// References:
-// http://alumni.cs.ucsb.edu/~wombatty/tutorials/opengl_mac_osx.html
-// # include <OpenGL/gl.h>
-// # include <OpenGL/glu.h>
-*/
-#else
-#include <GL/glu.h>
-#endif
 
 #include "camera.h"
 #include "extra.h"
-#include <iostream>
+
 using namespace std;
 
 Camera::Camera() {

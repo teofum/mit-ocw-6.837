@@ -1,5 +1,7 @@
-#include "parse.h"
 #include <map>
+
+#include "parse.h"
+
 using namespace std;
 
 namespace {
