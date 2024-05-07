@@ -13,17 +13,28 @@ inline bool approx(float lhs, float rhs) {
   return abs(lhs - rhs) < eps;
 }
 
+// Spline matrix for bezier curves (Bernstein polynomials)
+Matrix4f bezier(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
+// Derivatives of Bernstein polynomials
+Matrix4f bezier_d(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
+
 // We're only implenting swept surfaces where the profile curve is
 // flat on the xy-plane.  This is a check function.
 bool checkFlat(const Curve &profile) {
-  for (auto point : profile)
-    if (!approx(point.V[2], 0) || !approx(point.T[2], 0) || !approx(point.N[2], 0))
+  for (auto point: profile)
+    if (!approx(point.V[2], 0) || !approx(point.T[2], 0) ||
+        !approx(point.N[2], 0))
       return false;
 
   return true;
 }
 
-void createFaces(Surface &surface, unsigned profileLength, unsigned steps, bool loop = true) {
+void createFaces(
+  Surface &surface,
+  unsigned profileLength,
+  unsigned steps,
+  bool loop = true
+) {
   surface.VF.reserve((profileLength - 1) * steps * 2);
 
   unsigned last = loop ? steps + 1 : steps;
@@ -34,10 +45,10 @@ void createFaces(Surface &surface, unsigned profileLength, unsigned steps, bool 
     // Create a quad (two triangles)
     for (unsigned j = 1; j < profileLength; j++) {
       unsigned v00 = iLastProfile + j - 1, v01 = iLastProfile + j,
-               v10 = iProfile + j - 1, v11 = iProfile + j;
+        v10 = iProfile + j - 1, v11 = iProfile + j;
 
-      surface.VF.push_back(Tup3u(v00, v11, v10));
-      surface.VF.push_back(Tup3u(v00, v01, v11));
+      surface.VF.emplace_back(v00, v11, v10);
+      surface.VF.emplace_back(v00, v01, v11);
     }
   }
 }
@@ -49,20 +60,20 @@ bool isCorner(const CurvePoint &point, const CurvePoint *last) {
 }
 
 void appendSegment(
-    Surface &surface,
-    const Curve &profile,
-    const Vector3f &pos,
-    const CurvePoint &frame,
-    const Vector2f &pScale
+  Surface &surface,
+  const Curve &profile,
+  const Vector3f &pos,
+  const CurvePoint &frame,
+  const Vector2f &pScale
 ) {
   Matrix4f transform = Matrix4f(
-      Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
-      Vector4f(pos, 1), true
+    Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
+    Vector4f(pos, 1), true
   );
 
   Matrix4f scale = Matrix4f::scaling(pScale.x(), pScale.y(), 1.0f);
 
-  for (auto &point : profile) {
+  for (auto &point: profile) {
     // Move the point and rotate it to match the sweep coordinate frame
     Vector3f V = (transform * scale * Vector4f(point.V, 1)).xyz();
 
@@ -77,24 +88,24 @@ void appendSegment(
 }
 
 void appendCorner(
-    Surface &surface,
-    const Curve &profile,
-    const CurvePoint &frame,
-    const CurvePoint &last,
-    const Vector2f &pScale
+  Surface &surface,
+  const Curve &profile,
+  const CurvePoint &frame,
+  const CurvePoint &last,
+  const Vector2f &pScale
 ) {
   Matrix4f transform = Matrix4f(
-      Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
-      Vector4f(frame.V, 1), true
+    Vector4f(frame.N, 0), Vector4f(frame.B, 0), Vector4f(frame.T, 0),
+    Vector4f(frame.V, 1), true
   );
   Matrix4f transformLast = Matrix4f(
-      Vector4f(last.N, 0), Vector4f(last.B, 0), Vector4f(last.T, 0),
-      Vector4f(frame.V, 1), true
+    Vector4f(last.N, 0), Vector4f(last.B, 0), Vector4f(last.T, 0),
+    Vector4f(frame.V, 1), true
   );
 
   Matrix4f scale = Matrix4f::scaling(pScale.x(), pScale.y(), 1.0f);
 
-  for (auto &point : profile) {
+  for (auto &point: profile) {
     Vector3f P0 = (transformLast * scale).getSubmatrix3x3(0, 0) * point.V;
     Vector3f P1 = (transform * scale).getSubmatrix3x3(0, 0) * point.V;
 
@@ -118,9 +129,9 @@ void appendCorner(
 // Supporting non-uniform curves is far more complicated and this works
 // well enough
 Vector2f getScale(const Curve &scale, float t) {
-  float st = t * (float)(scale.size() - 1);
-  int i = (int)st;
-  float localT = st - (float)i;
+  float st = t * (float) (scale.size() - 1);
+  int i = (int) st;
+  float localT = st - (float) i;
   if (i == scale.size() - 1) {
     i--;
     localT = 1;
@@ -129,15 +140,74 @@ Vector2f getScale(const Curve &scale, float t) {
   return Vector2f::lerp(scale[i].V.xy(), scale[i + 1].V.xy(), localT);
 }
 
-CurvePoint getFrame(const Vector3f &vec) {
-  CurvePoint frame;
-  frame.T = vec;
-  Vector3f X(0, 0, 1);
-  if (abs(Vector3f::dot(X, frame.T) - 1) < 1e-8)
-    X = Vector3f(0, 1, 0);
+void fillPointMatrix(
+  Matrix4f &points,
+  const vector<Vector3f> &P,
+  unsigned n,
+  unsigned sn,
+  unsigned sm,
+  int d
+) {
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      points(i, j) = P[(sn + i) * n + sm + j][d];
+    }
+  }
+}
 
-  frame.N = Vector3f::cross(X, frame.T).normalized();
-  frame.B = Vector3f::cross(frame.T, frame.N);
+unsigned vertexIdx(unsigned i, unsigned j, unsigned n) {
+  return i * n + j;
+}
+
+void addBezierPatch(
+  Surface &surface,
+  const vector<Vector3f> &P,
+  unsigned n,
+  unsigned sn,
+  unsigned sm,
+  unsigned steps
+) {
+  Matrix4f points[3];
+  for (int d = 0; d < 3; d++) {
+    fillPointMatrix(points[d], P, n, sn, sm, d);
+  }
+
+  for (unsigned i = 0; i <= steps; i++) {
+    for (unsigned j = 0; j <= steps; j++) {
+      float u = (float) i / (float) steps;
+      float v = (float) j / (float) steps;
+
+      float u2 = u * u, v2 = v * v;
+      float u3 = u2 * u, v3 = v2 * v;
+      Vector4f uBasis(1, u, u2, u3), vBasis(1, v, v2, v3);
+      Vector4f U = bezier * uBasis, V = bezier * vBasis;
+      Vector4f dU = bezier_d * uBasis, dV = bezier_d * vBasis;
+
+      Vector3f point, dPdU, dPdV;
+      for (int d = 0; d < 3; d++) {
+        point[d] = Vector4f::dot(U, points[d] * V);
+        dPdU[d] = Vector4f::dot(dU, points[d] * V);
+        dPdV[d] = Vector4f::dot(U, points[d] * dV);
+      }
+
+      surface.VV.push_back(point);
+      surface.VN.push_back(-Vector3f::cross(dPdU, dPdV).normalized());
+
+      if (i > 0 && j > 0) {
+        unsigned ii = i + sn, jj = j + sm;
+        surface.VF.emplace_back(
+          vertexIdx(ii - 1, jj - 1, steps + 1),
+          vertexIdx(ii, jj, steps + 1),
+          vertexIdx(ii, jj - 1, steps + 1)
+        );
+        surface.VF.emplace_back(
+          vertexIdx(ii - 1, jj - 1, steps + 1),
+          vertexIdx(ii - 1, jj, steps + 1),
+          vertexIdx(ii, jj, steps + 1)
+        );
+      }
+    }
+  }
 }
 
 } // namespace
@@ -160,7 +230,7 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
     float phi = i * 2 * M_PI / steps;
     Matrix3f rotation = Matrix3f::rotateY(phi);
 
-    for (auto &point : profile) {
+    for (auto &point: profile) {
       // Rotate the point phi radians around the y-axis
       // We don't need translation so we can use a 3x3 matrix
       Vector3f V = rotation * point.V;
@@ -181,10 +251,10 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
 }
 
 Surface makeGenCyl(
-    const Curve &profile,
-    const Curve &sweep,
-    const Curve &scale,
-    bool useScaleCurve
+  const Curve &profile,
+  const Curve &sweep,
+  const Curve &scale,
+  bool useScaleCurve
 ) {
   Surface surface;
 
@@ -203,7 +273,7 @@ Surface makeGenCyl(
   const CurvePoint *last = nullptr;
   int i = 0;
   Vector2f vScale(1.0f, 1.0f);
-  for (auto &center : sweep) {
+  for (auto &center: sweep) {
     if (useScaleCurve) {
       float t = (float) i / (float) (sweep.size() - 1);
       vScale = getScale(scale, t);
@@ -237,7 +307,8 @@ Surface makeBirail(
   }
 
   if (sweep.size() != sweep2.size()) {
-    cerr << "birail sweep curves must have the same number of control points." << endl;
+    cerr << "birail sweep curves must have the same number of control points."
+         << endl;
     exit(0);
   }
 
@@ -288,11 +359,13 @@ Surface makeBirail(
 
     // profile -> sweep
     Matrix4f transform = sTransform * pInverse;
-    Matrix3f transformNormal = transform.getSubmatrix3x3(0, 0);
+    Matrix3f transformNormal = transform.inverse().transposed()
+                                        .getSubmatrix3x3(0, 0);
 
-    for (auto &point : profile) {
+    for (auto &point: profile) {
       Vector3f V = (transform * mScale * Vector4f(point.V, 1)).xyz();
-      Vector3f N = transformNormal * -point.N; // Normals are flipped for some reason
+      Vector3f N =
+        transformNormal * -point.N; // Normals are flipped for some reason
 
       surface.VV.push_back(V);
       surface.VN.push_back(N);
@@ -300,6 +373,30 @@ Surface makeBirail(
   }
 
   createFaces(surface, profileLength, steps, false);
+
+  return surface;
+}
+
+Surface makeBezierSurf(
+  const std::vector<Vector3f> &P,
+  unsigned n,
+  unsigned steps
+) {
+  unsigned m = P.size() / n;
+  if (n < 4 || n % 3 != 1 || P.size() % n != 0 || m < 4 || m % 3 != 1) {
+    cerr << "makeBezierSurf must be called with 3n+1 control points." << endl;
+    exit(0);
+  }
+
+  unsigned nSegments = (n - 1) / 3;
+  unsigned mSegments = (m - 1) / 3;
+  Surface surface;
+
+  for (unsigned sn = 0; sn < nSegments; sn++) {
+    for (unsigned sm = 0; sm < mSegments; sm++) {
+      addBezierPatch(surface, P, n, sn, sm, steps);
+    }
+  }
 
   return surface;
 }

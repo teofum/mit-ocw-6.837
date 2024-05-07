@@ -263,6 +263,21 @@ bool parseFile(
       surfaceNames.push_back(objName);
       if (named)
         surfaceIndex[objName] = surfaceNames.size() - 1;
+    } else if (objType == "bsurf") {
+      cerr << " reading bsurf "
+           << "[" << objName << "]" << endl;
+
+      unsigned n;
+      in >> steps >> n;
+
+      // Read control points and create temporary curves
+      vector<Vector3f> points = readCps(in, 3);
+
+      // Make the surface
+      surfaces.push_back(makeBezierSurf(points, n, steps));
+      surfaceNames.push_back(objName);
+      if (named)
+        surfaceIndex[objName] = surfaceNames.size() - 1;
     } else if (objType == "circ") {
       cerr << " reading circ "
            << "[" << objName << "]" << endl;

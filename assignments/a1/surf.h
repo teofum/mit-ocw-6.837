@@ -44,6 +44,8 @@ Surface makeBirail(
   const Curve &sweep2
 );
 
+Surface makeBezierSurf(const std::vector<Vector3f> &P, unsigned n, unsigned steps);
+
 void outputObjFile(std::ostream &out, const Surface &surface);
 
 #endif
