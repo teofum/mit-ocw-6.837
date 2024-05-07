@@ -150,19 +150,27 @@ void fillPointMatrix(
 ) {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
-      points(i, j) = P[(sn + i) * n + sm + j][d];
+      points(i, j) = P[(i + 3 * sn) * n + (j + 3 * sm)][d];
     }
   }
 }
 
-unsigned vertexIdx(unsigned i, unsigned j, unsigned n) {
-  return i * n + j;
+unsigned vertexIdx(
+  unsigned i,
+  unsigned j,
+  unsigned steps,
+  unsigned n,
+  unsigned sn,
+  unsigned sm
+) {
+  return ((j + sm * (steps - 1)) + steps * (i + sn * (n * steps - 1)));
 }
 
 void addBezierPatch(
   Surface &surface,
   const vector<Vector3f> &P,
   unsigned n,
+  unsigned mSeg,
   unsigned sn,
   unsigned sm,
   unsigned steps
@@ -172,8 +180,10 @@ void addBezierPatch(
     fillPointMatrix(points[d], P, n, sn, sm, d);
   }
 
-  for (unsigned i = 0; i <= steps; i++) {
-    for (unsigned j = 0; j <= steps; j++) {
+  unsigned i0 = sn == 0 ? 0 : 1;
+  unsigned j0 = sm == 0 ? 0 : 1;
+  for (unsigned i = i0; i <= steps; i++) {
+    for (unsigned j = j0; j <= steps; j++) {
       float u = (float) i / (float) steps;
       float v = (float) j / (float) steps;
 
@@ -194,16 +204,15 @@ void addBezierPatch(
       surface.VN.push_back(-Vector3f::cross(dPdU, dPdV).normalized());
 
       if (i > 0 && j > 0) {
-        unsigned ii = i + sn, jj = j + sm;
         surface.VF.emplace_back(
-          vertexIdx(ii - 1, jj - 1, steps + 1),
-          vertexIdx(ii, jj, steps + 1),
-          vertexIdx(ii, jj - 1, steps + 1)
+          vertexIdx(i - 1, j - 1, steps + 1, mSeg, sn, sm),
+          vertexIdx(i, j, steps + 1, mSeg, sn, sm),
+          vertexIdx(i, j - 1, steps + 1, mSeg, sn, sm)
         );
         surface.VF.emplace_back(
-          vertexIdx(ii - 1, jj - 1, steps + 1),
-          vertexIdx(ii - 1, jj, steps + 1),
-          vertexIdx(ii, jj, steps + 1)
+          vertexIdx(i - 1, j - 1, steps + 1, mSeg, sn, sm),
+          vertexIdx(i - 1, j, steps + 1, mSeg, sn, sm),
+          vertexIdx(i, j, steps + 1, mSeg, sn, sm)
         );
       }
     }
@@ -379,22 +388,22 @@ Surface makeBirail(
 
 Surface makeBezierSurf(
   const std::vector<Vector3f> &P,
-  unsigned n,
+  unsigned m,
   unsigned steps
 ) {
-  unsigned m = P.size() / n;
-  if (n < 4 || n % 3 != 1 || P.size() % n != 0 || m < 4 || m % 3 != 1) {
+  unsigned n = P.size() / m;
+  if (m < 4 || m % 3 != 1 || P.size() % m != 0 || n < 4 || n % 3 != 1) {
     cerr << "makeBezierSurf must be called with 3n+1 control points." << endl;
     exit(0);
   }
 
-  unsigned nSegments = (n - 1) / 3;
   unsigned mSegments = (m - 1) / 3;
+  unsigned nSegments = (n - 1) / 3;
   Surface surface;
 
   for (unsigned sn = 0; sn < nSegments; sn++) {
     for (unsigned sm = 0; sm < mSegments; sm++) {
-      addBezierPatch(surface, P, n, sn, sm, steps);
+      addBezierPatch(surface, P, m, mSegments, sn, sm, steps);
     }
   }
 

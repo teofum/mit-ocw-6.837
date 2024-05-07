@@ -32,10 +32,10 @@ void drawNormals(const Surface &surface, float len);
 Surface makeSurfRev(const Curve &profile, unsigned steps);
 
 Surface makeGenCyl(
-    const Curve &profile,
-    const Curve &sweep,
-    const Curve &scale,
-    bool useScaleCurve
+  const Curve &profile,
+  const Curve &sweep,
+  const Curve &scale,
+  bool useScaleCurve
 );
 
 Surface makeBirail(
@@ -44,7 +44,11 @@ Surface makeBirail(
   const Curve &sweep2
 );
 
-Surface makeBezierSurf(const std::vector<Vector3f> &P, unsigned n, unsigned steps);
+Surface makeBezierSurf(
+  const std::vector<Vector3f> &P,
+  unsigned m,
+  unsigned steps
+);
 
 void outputObjFile(std::ostream &out, const Surface &surface);
 
